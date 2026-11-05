@@ -76,7 +76,7 @@
                     <child>
                       <object class="GtkCheckButton" id="updateIntervalDefault">
                         <property name="active">1</property>
-                        <property name="label" translatable="yes">_Use global default update interval.</property>
+                        <property name="label" translatable="yes">_Use the folder or global default update interval.</property>
                         <property name="margin-start">12</property>
                         <property name="use-underline">1</property>
                       </object>
@@ -454,6 +454,32 @@
                         <property name="focusable">1</property>
                         <property name="label" translatable="yes">Extract full content from HTML5 and Google AMP</property>
                         <property name="use-underline">1</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkBox">
+                        <property name="spacing">12</property>
+                        <property name="tooltip-text" translatable="yes">With the tray icon plugin enabled, the tray icon takes this colour when the feed gets new items, until you view the feed. Useful instead of pop-ups when you keep notifications off.</property>
+                        <child>
+                          <object class="GtkLabel">
+                            <property name="label" translatable="yes">_Tray icon alert colour:</property>
+                            <property name="mnemonic-widget">trayAlertDropDown</property>
+                            <property name="use-underline">1</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkDropDown" id="trayAlertDropDown"/>
+                        </child>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="trayAlertInfo">
+                        <property name="halign">start</property>
+                        <property name="max-width-chars">50</property>
+                        <property name="visible">0</property>
+                        <property name="wrap">1</property>
+                        <property name="xalign">0.0</property>
+                        <property name="css-classes">dim-label</property>
                       </object>
                     </child>
                   </object>

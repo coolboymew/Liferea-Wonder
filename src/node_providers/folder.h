@@ -35,6 +35,60 @@
  */
 
 /**
+ * folder_get_update_interval: (skip)
+ * @node:	a folder node
+ *
+ * Returns: the folder update schedule in minutes, -1 to inherit from
+ * the parent folder (or the global default), -2 for no auto update
+ */
+gint folder_get_update_interval (Node *node);
+
+/**
+ * folder_set_update_interval: (skip)
+ * @node:	a folder node
+ * @interval:	schedule in minutes, -1 to inherit, -2 for no auto update
+ */
+void folder_set_update_interval (Node *node, gint interval);
+
+/**
+ * folder_get_override_children: (skip)
+ * @node:	a folder node
+ *
+ * Returns: TRUE if the folder schedule wins over the schedules of
+ * the feeds (and folders) inside
+ */
+gboolean folder_get_override_children (Node *node);
+
+/**
+ * folder_set_override_children: (skip)
+ * @node:	a folder node
+ * @override:	TRUE to let the folder schedule win over the feeds inside
+ */
+void folder_set_override_children (Node *node, gboolean override);
+
+/**
+ * folder_get_scheduled_interval: (skip)
+ * @node:		the feed list node to resolve the schedule for
+ * @ownInterval:	the node's own schedule (-1 inherit, -2 never, >0 minutes)
+ * @folder: (out) (nullable): the folder whose schedule decided (or NULL)
+ *
+ * Applies the schedules of all parent folders to the node's own
+ * schedule. The outermost folder overriding its children wins, then
+ * the node's own schedule, then the nearest folder with a schedule.
+ *
+ * Returns: -1 (use the global default), -2 (no auto update) or minutes
+ */
+gint folder_get_scheduled_interval (Node *node, gint ownInterval, Node **folder);
+
+/**
+ * folder_describe_interval: (skip)
+ * @interval:	schedule in minutes, -1 for the global default, -2 for never
+ *
+ * Returns: (transfer full): a translated text like "every 2 hours"
+ */
+gchar * folder_describe_interval (gint interval);
+
+/**
  * folder_get_provider: (skip)
  */
 nodeProviderPtr folder_get_provider (void);

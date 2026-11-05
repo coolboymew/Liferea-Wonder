@@ -80,6 +80,16 @@ function render(selector, template, params, append = false) {
 		result = `Rendering exception: ${e}`;
 	}
 
+	// Feed content (descriptions, authors, comments...) is inserted with
+	// {{{ }}} unescaped, so clean the whole result before it becomes part
+	// of the page: otherwise event handlers in feed HTML (e.g. <img onerror>)
+	// would run before the later content cleanup. Without the cleaner
+	// nothing is shown rather than unchecked HTML.
+	if (window.DOMPurify)
+		result = window.DOMPurify.sanitize(result);
+	else
+		result = 'Rendering error: HTML cleaner not loaded';
+
 	if (append)
 		e.innerHTML += result;
 	else

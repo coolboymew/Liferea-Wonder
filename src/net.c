@@ -149,6 +149,7 @@
 static GCancellable *cancellable = NULL;	/* GCancellable for all request handling */
 static SoupSession *session = NULL;	/* Session configured for preferences */
 static SoupSession *session2 = NULL;	/* Session for "Don't use proxy feature" */
+static SoupSession *session3 = NULL;	/* Session keeping cookies, only for subscriptions opting in (page feeds behind cookie gates) */
 static GHashTable *http429 = NULL;	/* Map of domains reporting HTTP 429 and cooldown timestamp as value */
 
 static ProxyDetectMode proxymode = PROXY_DETECT_MODE_AUTO;
@@ -253,7 +254,22 @@ network_process_callback (GObject *obj, GAsyncResult *res, gpointer user_data)
 		update_state_set_etag (job->result->updateState, soup_message_headers_get_one (soup_message_get_response_headers (msg), "ETag"));
 	}
 
-	/* No cookie persisting, we support only cookie sending! */
+	/* No cookie persisting, we support only cookie sending! Except for
+	   subscriptions opting in (keepCookies): sites with a cookie gate
+	   (language or age choice) redirect the first request to the gate,
+	   which sets the cookie. Retry once with the cookie in the jar. */
+	if (job->request->options && job->request->options->keepCookies && !job->cookieRetry &&
+	    200 == job->result->httpstatus && job->result->source &&
+	    !g_str_equal (job->result->source, job->request->source)) {
+		debug (DEBUG_NET, "%s redirected to %s, retrying with the received cookies", job->request->source, job->result->source);
+		job->cookieRetry = TRUE;
+		g_clear_pointer (&job->result->source, g_free);
+		g_clear_pointer (&job->result->data, g_free);
+		g_clear_pointer (&job->result->contentType, g_free);
+		job->result->size = 0;
+		network_process_request (job);
+		return;
+	}
 
 	/* Update cache max-age  */
 	tmp = soup_message_headers_get_list (soup_message_get_response_headers (msg), "Cache-Control");
@@ -366,6 +382,16 @@ network_process_request (UpdateJob *job)
 
 	request_headers = soup_message_get_request_headers (msg);
 
+	/* Kept cookies are often SameSite=Lax, which libsoup only sends
+	   for top level visits of the site, like a browser does when
+	   the address is entered */
+	if (job->request->options && job->request->options->keepCookies) {
+		GUri *uri = soup_message_get_uri (msg);
+		soup_message_set_first_party (msg, uri);
+		soup_message_set_site_for_cookies (msg, uri);
+		soup_message_set_is_top_level_navigation (msg, TRUE);
+	}
+
 	/* Set the postdata for the request */
 	if (job->request->postdata) {
 		g_autoptr(GBytes) postdata = g_bytes_new (job->request->postdata, strlen (job->request->postdata));
@@ -439,7 +465,9 @@ network_process_request (UpdateJob *job)
 	soup_message_add_status_code_handler (msg, "got_body", 308, (GCallback) network_process_redirect_callback, (gpointer)job);
 
 	/* If the feed has "dont use a proxy" selected, use 'session2' which is non-proxy */
-	if (job->request->options && job->request->options->dontUseProxy)
+	if (job->request->options && job->request->options->keepCookies)
+		soup_session_send_and_read_async (session3, msg, 0 /* IO priority */, cancellable, network_process_callback, (gpointer)job);
+	else if (job->request->options && job->request->options->dontUseProxy)
 		soup_session_send_and_read_async (session2, msg, 0 /* IO priority */, cancellable, network_process_callback, (gpointer)job);
 	else
 		soup_session_send_and_read_async (session, msg, 0 /* IO priority */, cancellable, network_process_callback, (gpointer)job);
@@ -496,11 +524,14 @@ network_deinit (void)
 
 	soup_session_abort (session);
 	soup_session_abort (session2);
+	soup_session_abort (session3);
 
 	g_hash_table_destroy (http429);
 	g_free (cancellable);
 	g_free (session);
 	g_free (session2);
+	g_free (session3);
+	session = session2 = session3 = NULL;
 }
 
 void
@@ -510,6 +541,11 @@ network_init (void)
 	SoupCookieJar	*cookies;
 	gchar		*filename;
 	SoupLogger	*logger;
+
+	/* Called both on startup and by the network monitor: set up once,
+	   replacing the sessions would also drop kept cookies */
+	if (session)
+		return;
 
 	cancellable = g_cancellable_new ();
 	http429 = g_hash_table_new_full (g_str_hash, g_int_equal, g_free, NULL);
@@ -535,14 +571,25 @@ network_init (void)
 	soup_session_add_feature (session, SOUP_SESSION_FEATURE (cookies));
 	soup_session_add_feature (session2, SOUP_SESSION_FEATURE (cookies));
 
+	/* cookies kept for subscriptions opting in, in their own file */
+	session3 = soup_session_new_with_options ("user-agent", useragent,
+	                                          "timeout", 120,
+	                                          "idle-timeout", 30,
+	                                          NULL);
+	filename = common_create_config_filename ("kept_cookies.txt");
+	soup_session_add_feature (session3, SOUP_SESSION_FEATURE (soup_cookie_jar_text_new (filename, FALSE)));
+	g_free (filename);
+
 	/* Only 'session' gets proxy, 'session2' is for non-proxy requests */
 	soup_session_set_proxy_resolver (session2, NULL);
 	network_set_soup_session_proxy (session, network_get_proxy_detect_mode ());
+	network_set_soup_session_proxy (session3, network_get_proxy_detect_mode ());
 
 	/* Soup debugging */
 	if (debug_get_flags() & DEBUG_NET) {
 		logger = soup_logger_new (SOUP_LOGGER_LOG_HEADERS);
 		soup_session_add_feature (session, SOUP_SESSION_FEATURE (logger));
+		soup_session_add_feature (session3, SOUP_SESSION_FEATURE (soup_logger_new (SOUP_LOGGER_LOG_HEADERS)));
 	}
 
 	g_free (useragent);
@@ -565,6 +612,8 @@ network_set_proxy (ProxyDetectMode mode)
 	 * before net_init() */
 	if (session)
 		network_set_soup_session_proxy (session, mode);
+	if (session3)
+		network_set_soup_session_proxy (session3, mode);
 
 	network_monitor_proxy_changed ();
 }

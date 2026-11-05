@@ -7,7 +7,6 @@
   <object class="GtkApplicationWindow" id="mainwindow">
     <property name="default-height">480</property>
     <property name="default-width">640</property>
-    <property name="icon-name">net.sourceforge.liferea</property>
     <property name="title" translatable="yes">Liferea</property>
     <property name="titlebar">
       <object class="GtkHeaderBar" id="headerbar">
@@ -292,6 +291,10 @@
           <attribute name="label" translatable="yes">_New Subscription...</attribute>
         </item>
         <item>
+          <attribute name="action">app.new-page-feed</attribute>
+          <attribute name="label" translatable="yes">New Feed From _Web Page...</attribute>
+        </item>
+        <item>
           <attribute name="action">app.new-folder</attribute>
           <attribute name="label" translatable="yes">New _Folder...</attribute>
         </item>
@@ -317,6 +320,10 @@
           <attribute name="action">app.export-feed-list</attribute>
           <attribute name="label" translatable="yes">_Export Feed List...</attribute>
         </item>
+        <item>
+          <attribute name="action">app.import-other-liferea</attribute>
+          <attribute name="label" translatable="yes">Import From _Liferea...</attribute>
+        </item>
       </section>
       <section>
         <item>
@@ -336,6 +343,10 @@
         <item>
           <attribute name="action">app.show-update-monitor</attribute>
           <attribute name="label" translatable="yes">_Update Monitor</attribute>
+        </item>
+        <item>
+          <attribute name="action">app.show-entry-filters</attribute>
+          <attribute name="label" translatable="yes">Entry _Filters...</attribute>
         </item>
         <item>
           <attribute name="action">node-sort-feeds</attribute>

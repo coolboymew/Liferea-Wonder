@@ -45,11 +45,18 @@ typedef enum {
 	UPDATE_REQUEST_NO_FEED       = (1<<2)	/*<< Requesting something not a feed (just for statistics) */
 } updateFlags;
 
+/* longest scrolling a browser load of a page feed may ask for */
+#define PAGE_BROWSER_MAX_SCROLL_SECONDS	120
+
 /* defines update options to be passed to an update request */
 typedef struct updateOptions {
 	gchar		*username;	/*<< username for HTTP auth */
 	gchar		*password;	/*<< password for HTTP auth */
 	gboolean	dontUseProxy;	/*<< no proxy flag */
+	gboolean	keepCookies;	/*<< keep cookies the site sets (page feeds behind cookie gates) */
+	gboolean	useBrowser;	/*<< load in a browser view running the page's JavaScript (page feeds, see page_browser.c) */
+	gchar		*waitFor;	/*<< browser loads: selector whose match means the page has loaded its items (or NULL) */
+	guint		scrollSeconds;	/*<< browser loads: scroll down this long first (lists loading more while scrolling) */
 } *updateOptionsPtr;
 
 /* defines all state data an updatable object (e.g. a feed) needs */
@@ -276,6 +283,7 @@ struct _UpdateResult {
 	gchar		*contentType;	/*<< Content type of received data */
 	gchar		*filterErrors;	/*<< Error messages from filter execution */
 	gchar		*updateError;	/*<< Error messages from general update processing */
+	gboolean	siteCheckNeeded;	/*<< the site showed a browser check the user has to pass (see page_browser.c) */
 	updateStatePtr	updateState;	/*<< New update state of the requested object (etags, last modified...) */
 };
 

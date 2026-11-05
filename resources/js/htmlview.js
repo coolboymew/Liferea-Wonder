@@ -274,10 +274,14 @@ async function load_item(data, baseURL, direction) {
 		// Check if there is an element which contains exactly the text from item.title
 		let el = Array.from(document.getElementById('content').querySelectorAll('*')).find(el => el.textContent.trim() === item.title);
 		if (el) {
+			// Descend while a single child still holds the whole title. When
+			// the title is split over several children (e.g. a label span
+			// and the rest) no child matches: stop there, the old code kept
+			// looping on the same element forever and froze the view.
 			let innermost = el;
-			while (innermost.children.length > 0) {
-				innermost = Array.from(innermost.children).find(child => child.textContent.trim() === item.title) || innermost;
-			}
+			let child;
+			while ((child = Array.from(innermost.children).find(c => c.textContent.trim() === item.title)))
+				innermost = child;
 			innermost.remove();
 			debugfooter += " titleDuplicateRemove";
 		}

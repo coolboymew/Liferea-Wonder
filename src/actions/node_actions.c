@@ -35,6 +35,9 @@
 #include "node_providers/vfolder.h"
 #include "node_source.h"
 #include "subscription.h"
+#include "ui/entry_filter_dialog.h"
+#include "ui/page_feed_dialog.h"
+#include "webkit/page_browser.h"
 #include "ui/feed_list_view.h"
 #include "ui/liferea_dialog.h"
 #include "ui/ui_common.h"
@@ -163,7 +166,10 @@ on_new_vfolder_activate (GSimpleAction *menuitem, GVariant *parameter, gpointer 
 static void
 ui_popup_rebuild_vfolder (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
-	vfolder_rebuild (feedlist_get_selected ());
+	Node *node = feedlist_get_selected ();
+
+	if (node && IS_VFOLDER (node))
+		vfolder_rebuild (node);
 }
 
 static void
@@ -173,6 +179,44 @@ on_properties (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 
         if (node)
                 NODE_PROVIDER (node)->request_properties (node);
+}
+
+static void
+on_edit_page_feed (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+	Node *node = feedlist_get_selected ();
+
+	if (node && node->subscription && node->subscription->scraper)
+		page_feed_dialog_edit (node->subscription);
+}
+
+static void
+on_site_check_closed (gpointer data, const gchar *uri, const gchar *html)
+{
+	Node *node = node_is_used_id ((const gchar *)data);
+
+	/* load again now that the check may have been passed */
+	if (node && node->subscription)
+		subscription_update (node->subscription, UPDATE_REQUEST_PRIORITY_HIGH);
+}
+
+static void
+on_pass_site_check (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+	Node *node = feedlist_get_selected ();
+
+	if (node && node->subscription)
+		page_browser_open_window (subscription_get_source (node->subscription), NULL, NULL, NULL,
+		                          on_site_check_closed, g_strdup (node->id), g_free);
+}
+
+static void
+on_add_entry_filter (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+	Node *node = feedlist_get_selected ();
+
+	if (node)
+		entry_filter_dialog_new_for_node (node);
 }
 
 static void
@@ -275,6 +319,10 @@ on_mark_all_read (GSimpleAction *action, GVariant *parameter, gpointer user_data
 	else
 		node = feedlist_get_selected ();
 
+	/* nothing selected (e.g. empty feed list) or unknown node */
+	if (!node)
+		return;
+
 	conf_get_bool_value (CONFIRM_MARK_ALL_READ, &confirm_mark_read);
 
 	if (confirm_mark_read) {
@@ -314,6 +362,9 @@ static const GActionEntry gaction_entries[] = {
 	{"node-mark-all-read", on_mark_all_read, NULL, NULL, NULL},
 	{"node-rebuild-vfolder", ui_popup_rebuild_vfolder, NULL, NULL, NULL},
 	{"node-properties", on_properties, NULL, NULL, NULL},
+	{"node-add-entry-filter", on_add_entry_filter, NULL, NULL, NULL},
+	{"node-edit-page-feed", on_edit_page_feed, NULL, NULL, NULL},
+	{"node-pass-site-check", on_pass_site_check, NULL, NULL, NULL},
 	{"node-delete", on_delete, NULL, NULL, NULL},
 	{"node-convert-to-local", ui_popup_add_convert_to_local, NULL, NULL, NULL},
 	{"node-update", on_menu_update, NULL, NULL, NULL},

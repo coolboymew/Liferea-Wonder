@@ -1,0 +1,75 @@
+# PKGBUILD for Arch Linux based systems (CachyOS, Manjaro, EndeavourOS ...)
+#
+# Builds this fork from the checkout it lives in (uncommitted changes
+# included), installs it as "liferea-wonder" next to the distribution's
+# "liferea" package without sharing files, settings or data folders.
+#
+#   cd packaging/archlinux
+#   makepkg -si          # build, run the tests and install
+#   makepkg -sif         # rebuild and reinstall after changes
+#   sudo pacman -R liferea-wonder   # remove it again
+
+pkgname=liferea-wonder
+pkgver=2.0.3.r9.g8c5ab3b4
+pkgrel=1
+pkgdesc="Liferea feed reader fork with per-host throttle, folder schedules, entry filters and tray colour alerts"
+arch=('x86_64' 'aarch64')
+url="https://github.com/coolboymew/Liferea-Wonder"
+license=('GPL-2.0-or-later')
+depends=(
+  'fribidi'
+  'glib2'
+  'gobject-introspection-runtime'
+  'gsettings-desktop-schemas'
+  'gtk4'
+  'json-glib'
+  'libadwaita'
+  'libpeas-2'
+  'libsoup3'
+  'libxml2'
+  'libxslt'
+  'pango'
+  'python-gobject'
+  'sqlite'
+  'webkitgtk-6.0'
+)
+makedepends=('gobject-introspection' 'intltool' 'meson')
+optdepends=(
+  'libnotify: desktop notification plugin'
+  'python-requests: download manager plugin'
+)
+
+# the checkout this PKGBUILD is part of
+_srcroot="$(realpath "${startdir}/../..")"
+
+_upstreamver=2.0.3
+
+pkgver() {
+  # e.g. 2.0.3.r9.g8c5ab3b4 (upstream tag, commits since, commit); a
+  # source copy without git history (e.g. from a zip) keeps the version
+  # below, written into SOURCE_VERSION when the copy was made
+  if git -C "${_srcroot}" describe --long --tags >/dev/null 2>&1; then
+    git -C "${_srcroot}" describe --long --tags | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+  elif git -C "${_srcroot}" rev-parse HEAD >/dev/null 2>&1; then
+    # history without upstream tags (Liferea-Wonder's own repository):
+    # the upstream version it is based on, commits, commit
+    printf '%s.r%s.g%s' "${_upstreamver}" "$(git -C "${_srcroot}" rev-list --count HEAD)" "$(git -C "${_srcroot}" rev-parse --short HEAD)"
+  elif [ -f "${_srcroot}/SOURCE_VERSION" ]; then
+    cat "${_srcroot}/SOURCE_VERSION"
+  else
+    echo "${pkgver}"
+  fi
+}
+
+build() {
+  arch-meson "${_srcroot}" build
+  meson compile -C build
+}
+
+check() {
+  meson test -C build --no-rebuild --print-errorlogs
+}
+
+package() {
+  meson install -C build --destdir "${pkgdir}"
+}

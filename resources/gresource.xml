@@ -18,6 +18,9 @@
     <file compressed="true">ui/gtk-liferea.css</file>
     <file compressed="true">ui/about.ui</file>
     <file compressed="true">ui/auth.ui</file>
+    <file compressed="true">ui/entry_filter_edit.ui</file>
+    <file compressed="true">ui/entry_filters.ui</file>
+    <file compressed="true">ui/folder_properties.ui</file>
     <file compressed="true">ui/force_update.ui</file>
     <file compressed="true">ui/mainwindow.ui</file>
     <file compressed="true">ui/mark_read_dialog.ui</file>
@@ -26,6 +29,7 @@
     <file compressed="true">ui/new_node_source.ui</file>
     <file compressed="true">ui/node_source.ui</file>
     <file compressed="true">ui/opml_source.ui</file>
+    <file compressed="true">ui/page_feed.ui</file>
     <file compressed="true">ui/prefs.ui</file>
     <file compressed="true">ui/properties.ui</file>
     <file compressed="true">ui/rename_node.ui</file>

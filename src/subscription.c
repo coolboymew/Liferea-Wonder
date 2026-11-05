@@ -32,8 +32,10 @@
 #include "itemlist.h"
 #include "metadata.h"
 #include "node_source.h"
+#include "node_providers/folder.h"
 #include "net.h"
 #include "net_monitor.h"
+#include "parsers/page_scraper.h"
 #include "subscription_icon.h"
 #include "xml.h"
 #include "ui/auth_dialog.h"
@@ -251,6 +253,9 @@ subscription_process_update_result (UpdateJob *job)
 
 	debug (DEBUG_UPDATE, "subscription: |%s| process update result (HTTP status %d)", subscription->source, result->httpstatus);
 
+	/* shown with its own icon until the user passed the check */
+	subscription->siteCheckNeeded = result->siteCheckNeeded;
+
 	/* 1. preprocessing */
 
 	g_assert (subscription->updateJob);
@@ -356,6 +361,12 @@ subscription_update (subscriptionPtr subscription, guint flags)
 	);
 	update_request_allow_commands (request, TRUE);
 
+	/* browser loads of page feeds wait until their items are there */
+	if (subscription->scraper && request->options) {
+		g_free (request->options->waitFor);
+		request->options->waitFor = g_strdup (subscription->scraper->item);
+	}
+
 	if (subscription_get_filter (subscription))
 		request->filtercmd = g_strdup (subscription_get_filter (subscription));
 
@@ -427,13 +438,22 @@ subscription_set_update_interval (subscriptionPtr subscription, gint interval)
 	feedlist_schedule_save ();
 }
 
+gint
+subscription_get_scheduled_interval (subscriptionPtr subscription, Node **folder)
+{
+	/* Folder schedules apply on top of the feed's own setting (-1 means
+	   "inherit", so the nearest folder with a schedule is used, while an
+	   overriding folder wins over everything inside it). */
+	return folder_get_scheduled_interval (subscription->node, subscription_get_update_interval (subscription), folder);
+}
+
 guint
 subscription_get_effective_update_interval (subscriptionPtr subscription)
 {
 	/* The are three layers to consider here:
 	
 	   1.) feed specified min interval (<ttl> tag, <sy:updateInterval> tag or Cache-Control header)
-	   2.) user specified update interval
+	   2.) user specified update interval (feed or folder schedule, see subscription_get_scheduled_interval())
 	   3.) global default update setting
 
 	   Here is an overview table on the combinations
@@ -448,7 +468,7 @@ subscription_get_effective_update_interval (subscriptionPtr subscription)
 	   %              | -2 (do not update)   | *                        | (0) do not update
 	*/
 	gint feedInterval = update_state_get_min_interval (subscription->updateState);
-	gint userInterval = subscription_get_update_interval (subscription);
+	gint userInterval = subscription_get_scheduled_interval (subscription, NULL);
 	gint globalInterval = 0;
 
 	/* if the feed has specified no interval then feedInterval is -1,
@@ -576,6 +596,9 @@ void
 subscription_set_filter (subscriptionPtr subscription, const gchar *filter)
 {
 	g_free (subscription->filtercmd);
+	g_free (subscription->initialTitle);
+	page_scraper_free (subscription->scraper);
+	g_slist_free_full (subscription->discoveryCandidates, g_free);
 	subscription->filtercmd = g_strdup (filter);
 	feedlist_schedule_save ();
 }
@@ -687,6 +710,48 @@ subscription_import (xmlNodePtr xml, gboolean trusted)
 		subscription->loadItemLink = TRUE;
 	xmlFree (tmp);
 
+	/* page feed selectors (see parsers/page_scraper.h) */
+	tmp = xmlGetProp (xml, BAD_CAST"scrapeItem");
+	if (tmp && *tmp) {
+		subscription->scraper = page_scraper_new ();
+		subscription->scraper->item = g_strdup ((gchar *)tmp);
+		subscription->scraper->title = (gchar *)xmlGetProp (xml, BAD_CAST"scrapeTitle");
+		subscription->scraper->link = (gchar *)xmlGetProp (xml, BAD_CAST"scrapeLink");
+		subscription->scraper->image = (gchar *)xmlGetProp (xml, BAD_CAST"scrapeImage");
+		subscription->scraper->text = (gchar *)xmlGetProp (xml, BAD_CAST"scrapeText");
+	}
+	xmlFree (tmp);
+
+	tmp = xmlGetProp (xml, BAD_CAST"loadInBrowser");
+	if (tmp && !xmlStrcmp (tmp, BAD_CAST"true"))
+		subscription->updateOptions->useBrowser = TRUE;
+	xmlFree (tmp);
+
+	tmp = xmlGetProp (xml, BAD_CAST"scrollSeconds");
+	if (tmp)
+		subscription->updateOptions->scrollSeconds = MIN (PAGE_BROWSER_MAX_SCROLL_SECONDS, (guint)g_ascii_strtoull ((gchar *)tmp, NULL, 10));
+	xmlFree (tmp);
+
+	tmp = xmlGetProp (xml, BAD_CAST"keepCookies");
+	if (tmp && !xmlStrcmp (tmp, BAD_CAST"true"))
+		subscription->updateOptions->keepCookies = TRUE;
+	xmlFree (tmp);
+
+	tmp = xmlGetProp (xml, BAD_CAST"trayAlert");
+	if (tmp) {
+		const gchar *names[] = TRAY_ALERT_NAMES;
+		for (guint i = 1; i < TRAY_ALERT_COUNT; i++)
+			if (!xmlStrcmp (tmp, BAD_CAST names[i]))
+				subscription->trayAlert = (trayAlertColor)i;
+	}
+	xmlFree (tmp);
+
+	/* an alert not acknowledged yet stays on after a restart */
+	tmp = xmlGetProp (xml, BAD_CAST"trayAlertPending");
+	if (tmp && !xmlStrcmp (tmp, BAD_CAST"true") && subscription->trayAlert != TRAY_ALERT_NONE)
+		subscription->trayAlertPending = TRUE;
+	xmlFree (tmp);
+
 	tmp = xmlGetProp (xml, BAD_CAST"alwaysShowInReducedMode");
 	if (tmp && !xmlStrcmp (tmp, BAD_CAST"true"))
 		subscription->alwaysShowInReduced = TRUE;
@@ -715,6 +780,28 @@ subscription_export (subscriptionPtr subscription, xmlNodePtr xml, gboolean trus
 	if (subscription->updateOptions->dontUseProxy)
 		xmlNewProp (xml, BAD_CAST"dontUseProxy", BAD_CAST"true");
 
+	if (subscription->updateOptions->keepCookies)
+		xmlNewProp (xml, BAD_CAST"keepCookies", BAD_CAST"true");
+
+	if (subscription->updateOptions->useBrowser)
+		xmlNewProp (xml, BAD_CAST"loadInBrowser", BAD_CAST"true");
+
+	if (subscription->updateOptions->scrollSeconds) {
+		g_autofree gchar *seconds = g_strdup_printf ("%u", subscription->updateOptions->scrollSeconds);
+		xmlNewProp (xml, BAD_CAST"scrollSeconds", BAD_CAST seconds);
+	}
+
+	/* page feed selectors, also in exports so they can be shared */
+	if (subscription->scraper) {
+		pageScraperPtr s = subscription->scraper;
+		const gchar *attrs[] = { "scrapeItem", "scrapeTitle", "scrapeLink", "scrapeImage", "scrapeText" };
+		const gchar *values[] = { s->item, s->title, s->link, s->image, s->text };
+
+		for (guint i = 0; i < G_N_ELEMENTS (attrs); i++)
+			if (values[i] && *values[i])
+				xmlNewProp (xml, BAD_CAST attrs[i], BAD_CAST values[i]);
+	}
+
 	if (trusted) {
 		g_autofree gchar *cacheLimit = NULL;
 
@@ -742,6 +829,13 @@ subscription_export (subscriptionPtr subscription, xmlNodePtr xml, gboolean trus
 
 		if (subscription->alwaysShowInReduced)
 			xmlNewProp (xml, BAD_CAST"alwaysShowInReducedMode", BAD_CAST"true");
+
+		if (subscription->trayAlert != TRAY_ALERT_NONE) {
+			const gchar *names[] = TRAY_ALERT_NAMES;
+			xmlNewProp (xml, BAD_CAST"trayAlert", BAD_CAST names[subscription->trayAlert]);
+			if (subscription->trayAlertPending)
+				xmlNewProp (xml, BAD_CAST"trayAlertPending", BAD_CAST"true");
+		}
 
 		debug (DEBUG_CACHE, "adding subscription: source=%s interval=%d cacheLimit=%s",
 			subscription_get_source (subscription),

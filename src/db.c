@@ -21,6 +21,7 @@
 #include <sqlite3.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "common.h"
 #include "conf.h"
@@ -547,6 +548,15 @@ db_init (void)
 		 "   PRIMARY KEY (node_id, item_id)"
 		 ");");
 
+	/* Entries rejected by entry filters, remembered so they are not
+	   processed as new items on every update (see entry_filter.c) */
+	db_exec ("CREATE TABLE filtered_items ("
+	         "   node_id            STRING,"
+	         "   item_key           STRING,"
+	         "   last_seen          INTEGER,"
+	         "   PRIMARY KEY (node_id, item_key)"
+	         ");");
+
 	db_exec ("CREATE TABLE update_state ("
         	 "   node_id            STRING,"
 		 "   last_modified      STRING,"
@@ -602,6 +612,10 @@ db_init (void)
 	db_exec ("DELETE FROM subscription_metadata WHERE node_id NOT IN "
           	 "(SELECT node_id FROM node);");
 
+	debug (DEBUG_DB, "Removing filtered entries without feed list node...");
+	db_exec ("DELETE FROM filtered_items WHERE node_id NOT IN "
+	         "(SELECT node_id FROM node);");
+
 	debug (DEBUG_DB, "Removing metadata without item...");
 	db_exec ("DELETE FROM metadata WHERE item_id NOT IN "
 		 "(SELECT item_id FROM items);");
@@ -626,6 +640,7 @@ db_init (void)
 		 "   DELETE FROM subscription_metadata WHERE node_id = old.node_id; "
 		 "   DELETE FROM search_folder_items WHERE parent_node_id = old.node_id; "
 		 "   DELETE FROM update_state WHERE node_id = old.node_id; "
+		 "   DELETE FROM filtered_items WHERE node_id = old.node_id; "
         	 "END;");
 
 	/* Note: view counting triggers are set up in the view preparation code (see db_view_create()) */
@@ -762,6 +777,18 @@ db_init (void)
 
 	db_new_statement ("searchFolderUnreadCountStmt",
 	                  "SELECT count(items.item_id) FROM search_folder_items JOIN items ON search_folder_items.item_id = items.item_id WHERE search_folder_items.node_id = ? and items.read = 0;");
+
+	db_new_statement ("filteredItemCheckStmt",
+	                  "UPDATE filtered_items SET last_seen = ? WHERE node_id = ? AND item_key = ?;");
+
+	db_new_statement ("filteredItemAddStmt",
+	                  "REPLACE INTO filtered_items (node_id, item_key, last_seen) VALUES (?,?,?);");
+
+	db_new_statement ("filteredItemsPruneStmt",
+	                  "DELETE FROM filtered_items WHERE last_seen < ?;");
+
+	db_new_statement ("filteredItemsClearStmt",
+	                  "DELETE FROM filtered_items;");
 
 	db_new_statement ("nodeIdListStmt",
 	                  "SELECT node_id FROM node;");
@@ -1654,6 +1681,65 @@ db_node_update (Node *node)
 
 	sqlite3_finalize (stmt);
 
+}
+
+gboolean
+db_filtered_item_check (const gchar *nodeId, const gchar *key)
+{
+	sqlite3_stmt	*stmt;
+	gboolean	found = FALSE;
+
+	/* Refreshing last_seen and checking for the row in one go */
+	stmt = db_get_statement ("filteredItemCheckStmt");
+	sqlite3_bind_int64 (stmt, 1, (gint64)time (NULL));
+	sqlite3_bind_text (stmt, 2, nodeId, -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text (stmt, 3, key, -1, SQLITE_TRANSIENT);
+	if (SQLITE_DONE == sqlite3_step (stmt))
+		found = (sqlite3_changes (db) > 0);
+	sqlite3_finalize (stmt);
+
+	return found;
+}
+
+void
+db_filtered_item_add (const gchar *nodeId, const gchar *key)
+{
+	sqlite3_stmt	*stmt;
+	gint		res;
+
+	stmt = db_get_statement ("filteredItemAddStmt");
+	sqlite3_bind_text (stmt, 1, nodeId, -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text (stmt, 2, key, -1, SQLITE_TRANSIENT);
+	sqlite3_bind_int64 (stmt, 3, (gint64)time (NULL));
+	res = sqlite3_step (stmt);
+	if (SQLITE_DONE != res)
+		g_warning ("Could not remember filtered entry for node %s (error code %d)!", nodeId, res);
+	sqlite3_finalize (stmt);
+}
+
+void
+db_filtered_items_prune (guint maxAgeDays)
+{
+	sqlite3_stmt	*stmt;
+
+	stmt = db_get_statement ("filteredItemsPruneStmt");
+	sqlite3_bind_int64 (stmt, 1, (gint64)time (NULL) - (gint64)maxAgeDays * 24 * 60 * 60);
+	if (SQLITE_DONE != sqlite3_step (stmt))
+		g_warning ("Could not prune filtered entries!");
+	else
+		debug (DEBUG_DB, "pruned %d filtered entries not seen for %u days", sqlite3_changes (db), maxAgeDays);
+	sqlite3_finalize (stmt);
+}
+
+void
+db_filtered_items_clear (void)
+{
+	sqlite3_stmt	*stmt;
+
+	stmt = db_get_statement ("filteredItemsClearStmt");
+	if (SQLITE_DONE != sqlite3_step (stmt))
+		g_warning ("Could not clear filtered entries!");
+	sqlite3_finalize (stmt);
 }
 
 void

@@ -1,0 +1,96 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<interface>
+  <!-- interface-name entry_filters.ui -->
+  <requires lib="gtk" version="4.0"/>
+  <requires lib="libadwaita" version="1.5"/>
+  <object class="AdwDialog" id="entry_filters">
+    <property name="default-widget">applyBtn</property>
+    <property name="title" translatable="yes">Entry Filters</property>
+    <property name="width-request">560</property>
+    <property name="height-request">420</property>
+    <child>
+      <object class="GtkBox">
+        <property name="orientation">vertical</property>
+        <child>
+          <object class="AdwHeaderBar"/>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <property name="margin-bottom">12</property>
+            <property name="margin-end">12</property>
+            <property name="margin-start">12</property>
+            <property name="margin-top">12</property>
+            <property name="orientation">vertical</property>
+            <property name="spacing">12</property>
+            <property name="vexpand">1</property>
+            <child>
+              <object class="GtkLabel">
+                <property name="label" translatable="yes">Filters are checked against new entries when feeds update. Rejected entries are never stored and do not count toward a feed's item limit.</property>
+                <property name="max-width-chars">60</property>
+                <property name="wrap">1</property>
+                <property name="xalign">0.0</property>
+                <property name="css-classes">dim-label</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkScrolledWindow">
+                <property name="hscrollbar-policy">never</property>
+                <property name="vexpand">1</property>
+                <child>
+                  <object class="GtkListBox" id="filterList">
+                    <property name="css-classes">boxed-list</property>
+                    <property name="selection-mode">single</property>
+                    <property name="valign">start</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkBox">
+                <property name="spacing">6</property>
+                <child>
+                  <object class="GtkButton" id="addBtn">
+                    <property name="label" translatable="yes">_Add...</property>
+                    <property name="use-underline">1</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton" id="editBtn">
+                    <property name="label" translatable="yes">_Edit...</property>
+                    <property name="use-underline">1</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton" id="removeBtn">
+                    <property name="label" translatable="yes">_Remove</property>
+                    <property name="use-underline">1</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkBox">
+                    <property name="halign">end</property>
+                    <property name="hexpand">1</property>
+                    <property name="spacing">6</property>
+                    <child>
+                      <object class="GtkButton" id="cancelBtn">
+                        <property name="label" translatable="yes">_Cancel</property>
+                        <property name="use-underline">1</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="applyBtn">
+                        <property name="css-classes">suggested-action</property>
+                        <property name="label" translatable="yes">_Save</property>
+                        <property name="use-underline">1</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>

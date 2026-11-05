@@ -216,6 +216,43 @@ void db_node_update (Node *node);
 void db_node_remove (const gchar *id);
 
 /**
+ * db_filtered_item_check: (skip)
+ * @nodeId:	the feed list node id
+ * @key:	the entry key (see entry_filter.c)
+ *
+ * Checks whether an entry was rejected by entry filters before.
+ *
+ * Returns: TRUE if the entry is remembered as rejected
+ */
+gboolean db_filtered_item_check (const gchar *nodeId, const gchar *key);
+
+/**
+ * db_filtered_item_add: (skip)
+ * @nodeId:	the feed list node id
+ * @key:	the entry key (see entry_filter.c)
+ *
+ * Remembers an entry rejected by entry filters.
+ */
+void db_filtered_item_add (const gchar *nodeId, const gchar *key);
+
+/**
+ * db_filtered_items_prune: (skip)
+ * @maxAgeDays:	forget entries not seen in their feed for this many days
+ *
+ * Entries that dropped out of their feed cannot come back as new, so
+ * remembering them is pointless. Keeps the table small.
+ */
+void db_filtered_items_prune (guint maxAgeDays);
+
+/**
+ * db_filtered_items_clear: (skip)
+ *
+ * Forgets all rejected entries, so they are checked against the
+ * filters again on the next update (used after filter changes).
+ */
+void db_filtered_items_clear (void);
+
+/**
  * Clean old nodes from the DB by comparing all DB nodes of
  * a default source against the in-memory feed list of this source.
  * Must only be called after all the node sources were imported.

@@ -306,6 +306,9 @@ preferences_dialog_init (PreferencesDialog *pd)
 	widget = liferea_dialog_lookup (pd->dialog, "globalRefreshIntervalUnit");
 	gtk_drop_down_set_selected (GTK_DROP_DOWN (widget), interval_unit);
 
+	/* per-host request throttle in seconds (fractions allowed) */
+	conf_bind (HOST_REQUEST_DELAY, liferea_dialog_lookup (pd->dialog, "hostRequestDelaySpinButton"), "value", G_SETTINGS_BIND_DEFAULT);
+
 	/* ================== panel 2 "folders" ==================== */
 
 	g_signal_connect (G_OBJECT (liferea_dialog_lookup (pd->dialog, "updateAllFavicons")), "clicked", G_CALLBACK(on_updateallfavicons_clicked), pd);
@@ -444,7 +447,8 @@ preferences_dialog_init (PreferencesDialog *pd)
 		gtk_list_box_append (GTK_LIST_BOX (list_box), row);
 
 		g_signal_connect (active_checkbox, "notify::active", G_CALLBACK (on_plugin_switch_toggled), info);
-		g_signal_connect (configure_button, "clicked", G_CALLBACK (on_plugin_configure_clicked), plugin);
+		if (configure_button)
+			g_signal_connect (configure_button, "clicked", G_CALLBACK (on_plugin_configure_clicked), plugin);
 
 		g_object_set_data_full (G_OBJECT (row), "plugin-info", g_object_ref (info), g_object_unref);
 	}

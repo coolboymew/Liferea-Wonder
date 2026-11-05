@@ -78,6 +78,7 @@
 #define DO_NOT_SELL                     "do-not-sell"
 #define INTRANET_CONNECTIVITY		"intranet-connectivity"
 #define MAX_UPDATE_THREADS              "max-update-threads"
+#define HOST_REQUEST_DELAY		"host-request-delay"
 
 /* initializing methods */
 void	conf_init (void);
@@ -90,6 +91,7 @@ GSettings *   conf_get_settings (void);
 #define conf_get_str_value(key, value) conf_get_str_value_from_schema (NULL, key, value)
 #define conf_get_strv_value(key, value) conf_get_strv_value_from_schema (NULL, key, value)
 #define conf_get_int_value(key, value) conf_get_int_value_from_schema (NULL, key, value)
+#define conf_get_double_value(key, value) conf_get_double_value_from_schema (NULL, key, value)
 
 /**
  * Returns true if the key is defined in the schema for the given gsettings.
@@ -148,6 +150,17 @@ gboolean conf_get_strv_value_from_schema (GSettings *gsettings, const gchar *key
 gboolean conf_get_int_value_from_schema (GSettings *gsettings, const gchar *key, gint *value);
 
 /**
+ * Retrieves the value of the given double configuration key.
+ *
+ * @param gsettings	gsettings schema to use
+ * @param key	the configuration key
+ * @param value the value
+ *
+ * @returns TRUE if the configuration key was found
+ */
+gboolean conf_get_double_value_from_schema (GSettings *gsettings, const gchar *key, gdouble *value);
+
+/**
  * Sets the value of the given boolean configuration key.
  *
  * @param key	the configuration key
@@ -180,6 +193,14 @@ void conf_set_strv_value (const gchar *key, const gchar **value);
  * @param value	the new integer value
  */
 void conf_set_int_value (const gchar *key, gint value);
+
+/**
+ * Sets the value of the given double configuration key
+ *
+ * @param key	the configuration key
+ * @param value	the new double value
+ */
+void conf_set_double_value (const gchar *key, gdouble value);
 
 /**
  * Get the current system default font from desktop schema

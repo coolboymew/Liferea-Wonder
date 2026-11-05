@@ -75,6 +75,12 @@ gboolean feed_list_view_is_expanded (const gchar *nodeId);
 void feed_list_view_rename_node (Node *node);
 
 /**
+ * feed_list_view_refresh_node: (skip)
+ * @node:	the node whose row to redraw (e.g. after a title change)
+ */
+void feed_list_view_refresh_node (Node *node);
+
+/**
  * Prompt the user for confirmation of a folder or feed, and
  * recursively remove the feed or folder if the user accepts. This
  * function does not block, so the folder/feeds will not have

@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Copyright 2022 Lars Windolf  -->
 <component type="desktop-application">
-  <id>net.sourceforge.liferea</id>
+  <id>@APP_ID@</id>
   <provides>
-    <id>net.sourceforge.liferea.desktop</id>
+    <id>@APP_ID@.desktop</id>
   </provides>
-  <launchable type="desktop-id">net.sourceforge.liferea.desktop</launchable>
+  <launchable type="desktop-id">@APP_ID@.desktop</launchable>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-2.0+</project_license>
-  <name>Liferea</name>
+  <name>Liferea-Wonder</name>
   <developer id="de.lzone">
     <name>Lars Windolf</name>
   </developer>
@@ -66,8 +66,8 @@
       <image>https://lzone.de/liferea/screenshots/screenshot8.png</image>
     </screenshot>
   </screenshots>
-  <url type="bugtracker">https://github.com/lwindolf/liferea/issues/new</url>
-  <url type="homepage">https://lzone.de/liferea/</url>
+  <url type="bugtracker">https://github.com/coolboymew/Liferea-Wonder/issues/new</url>
+  <url type="homepage">https://github.com/coolboymew/Liferea-Wonder</url>
   <url type="help">https://lzone.de/liferea/help1140/topics_en.html</url>
   <url type="translate">https://github.com/lwindolf/liferea?tab=readme-ov-file#new-translations</url>
   <translation type="gettext">liferea</translation>

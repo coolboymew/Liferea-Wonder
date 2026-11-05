@@ -350,6 +350,18 @@ feed_list_view_insert_node_item (Node *node)
 	return TRUE;
 }
 
+
+/* a feed waiting for its site check gets its own icon, other failed
+   nodes the error icon */
+static const GIcon *
+feed_list_view_node_icon (Node *node)
+{
+	if (node->subscription && node->subscription->siteCheckNeeded)
+		return icon_get (ICON_SITE_CHECK);
+
+	return node->available?node_get_icon (node):icon_get (ICON_UNAVAILABLE);
+}
+
 static gboolean
 feed_list_view_refresh_bound_row_widget (GtkWidget *widget, Node *node)
 {
@@ -368,7 +380,7 @@ feed_list_view_refresh_bound_row_widget (GtkWidget *widget, Node *node)
 	gchar *count_markup = feed_list_view_node_count_markup (node);
 
 	if (icon)
-		gtk_image_set_from_gicon (GTK_IMAGE (icon), (GIcon *)(node->available ? node_get_icon (node) : icon_get (ICON_UNAVAILABLE)));
+		gtk_image_set_from_gicon (GTK_IMAGE (icon), (GIcon *)feed_list_view_node_icon (node));
 	if (label)
 		gtk_label_set_markup (GTK_LABEL (label), label_markup);
 	if (count)
@@ -379,7 +391,7 @@ feed_list_view_refresh_bound_row_widget (GtkWidget *widget, Node *node)
 	return TRUE;
 }
 
-static void
+void
 feed_list_view_refresh_node (Node *node)
 {
 	guint position;
@@ -542,7 +554,7 @@ feed_list_view_factory_bind_cb (GtkListItemFactory *factory, GtkListItem *list_i
 	label_markup = feed_list_view_node_label_markup (node);
 	count_markup = feed_list_view_node_count_markup (node);
 
-	gtk_image_set_from_gicon (GTK_IMAGE (icon), (GIcon *)(node->available ? node_get_icon (node) : icon_get (ICON_UNAVAILABLE)));
+	gtk_image_set_from_gicon (GTK_IMAGE (icon), (GIcon *)feed_list_view_node_icon (node));
 	gtk_label_set_markup (GTK_LABEL (label), label_markup);
 	gtk_label_set_markup (GTK_LABEL (count), count_markup ? count_markup : "");
 
@@ -727,6 +739,14 @@ feed_list_view_popup_menu (Node *node)
 		}
 	}
 
+	/* entry filters work on feeds and on everything inside folders */
+	if (validSelection && (node->subscription || IS_FOLDER (node)))
+		g_menu_append (section, _("Add Entry _Filter..."), "app.node-add-entry-filter");
+	if (validSelection && node->subscription && node->subscription->scraper)
+		g_menu_append (section, _("Edit _Web Page Feed..."), "app.node-edit-page-feed");
+	if (validSelection && node->subscription && node->subscription->updateOptions->useBrowser)
+		g_menu_append (section, node->subscription->siteCheckNeeded?_("Pass Site _Check... (needed)"):_("Pass Site _Check..."), "app.node-pass-site-check");
+
 	if (IS_VFOLDER (node)) {
 		g_menu_append_section (menu_model, NULL, G_MENU_MODEL (section));
 		g_object_unref (section);
@@ -757,6 +777,8 @@ feed_list_view_popup_menu (Node *node)
 	return menu_model;
 }
 
+static void feed_list_view_select (Node *node);
+
 static void
 feed_list_view_pressed_cb (GtkGestureClick *gesture, gint n_press, gdouble x, gdouble y, gpointer data)
 {
@@ -773,7 +795,16 @@ feed_list_view_pressed_cb (GtkGestureClick *gesture, gint n_press, gdouble x, gd
 			/* GtkTreeExpander handles primary-button expansion itself. */
 			break;
 		case GDK_BUTTON_SECONDARY: {
-			GMenu *menu = feed_list_view_popup_menu (node);
+			GMenu *menu;
+
+			/* the context menu actions work on the selected node,
+			   so right-clicking a row selects it first */
+			if (node && node != feedlist_get_selected ()) {
+				feed_list_view_select (node);
+				feedlist_set_selected (node);
+			}
+
+			menu = feed_list_view_popup_menu (node);
 			GtkWidget *popover = gtk_popover_menu_new_from_model (G_MENU_MODEL (menu));
 			GtkWidget *anchor = gtk_widget_get_parent (GTK_WIDGET (flv->listview));
 			GdkRectangle rect;
@@ -949,6 +980,11 @@ feed_list_view_create (GtkListView *listview, FeedList *feedlist)
 	flv->listview = listview;
 	flv->feedlist = feedlist;
 	flv->selection_model = gtk_single_selection_new (NULL);
+	/* Only show what is really selected: with autoselect GTK highlights
+	   the first row while Liferea has no selected node, and context menu
+	   actions then ran on nothing (crash when deleting a folder). */
+	gtk_single_selection_set_autoselect (flv->selection_model, FALSE);
+	gtk_single_selection_set_can_unselect (flv->selection_model, TRUE);
 	flv->factory = gtk_signal_list_item_factory_new ();
 
 	g_signal_connect (flv->factory, "setup", G_CALLBACK (feed_list_view_factory_setup_cb), flv);
@@ -1128,7 +1164,8 @@ feed_list_view_remove (Node *node)
 {
 	g_autofree gchar *text = NULL;
 
-	g_assert (node == feedlist_get_selected ());
+	if (!node)
+		return;
 
 	text = g_strdup_printf (IS_FOLDER (node)?_("Are you sure that you want to delete \"%s\" and its contents?"):_("Are you sure that you want to delete \"%s\"?"), node_get_title (node));
 

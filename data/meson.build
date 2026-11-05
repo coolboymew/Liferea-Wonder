@@ -1,8 +1,12 @@
 subdir('man')
 
 desktop_file = i18n.merge_file(
-  input: 'net.sourceforge.liferea.desktop.in',
-  output: 'net.sourceforge.liferea.desktop',
+  input: configure_file (
+    input: 'net.sourceforge.liferea.desktop.in',
+    output: app_id + '.desktop.in',
+    configuration: { 'APP_ID': app_id, 'EXEC': meson.project_name (), 'GETTEXT_PACKAGE': gettext_package },
+  ),
+  output: app_id + '.desktop',
   type: 'desktop',
   po_dir: '../po',
   install: true,
@@ -10,8 +14,12 @@ desktop_file = i18n.merge_file(
 )
 
 appdata_file = i18n.merge_file(
-  input: 'net.sourceforge.liferea.appdata.xml.in',
-  output: 'net.sourceforge.liferea.appdata.xml',
+  input: configure_file (
+    input: 'net.sourceforge.liferea.appdata.xml.in',
+    output: app_id + '.appdata.xml.in',
+    configuration: { 'APP_ID': app_id },
+  ),
+  output: app_id + '.appdata.xml',
   po_dir: '../po',
   install: true,
   install_dir: join_paths(get_option('datadir'), 'metainfo'),
@@ -47,7 +55,7 @@ foreach file: [
 endforeach
 
 install_data (
-  'net.sf.liferea.gschema.xml',
+  schema_id + '.gschema.xml',
   install_dir: join_paths(get_option('datadir'), 'glib-2.0', 'schemas')
 )
 
@@ -56,5 +64,5 @@ gnome = import('gnome')
 
 gnome.compile_schemas(
   build_by_default: true,
-  depend_files: 'net.sf.liferea.gschema.xml',
+  depend_files: schema_id + '.gschema.xml',
 )

@@ -90,6 +90,8 @@ struct _LifereaShell {
 	GtkWidget	*toastRevealer;		/*<< Revealer for toast animation */
 	GtkWidget	*toastLabel;		/*<< Label showing toast message */
 	guint		toastTimeout;		/*<< Timeout ID for auto-hide */
+
+	gboolean	closeToTray;		/*<< closing the window hides it (set by the tray icon plugin) */
 };
 
 enum {
@@ -101,6 +103,7 @@ enum {
 	PROP_LAYOUT_MODE,
 	PROP_LAYOUT_DISABLED,
 	PROP_VISIBILITY,
+	PROP_CLOSE_TO_TRAY,
 	PROP_BUILDER
 };
 
@@ -177,6 +180,9 @@ liferea_shell_get_property (GObject *object, guint prop_id, GValue *value, GPara
 		case PROP_VISIBILITY:
 			g_value_set_boolean (value, shell->window && gtk_widget_get_visible (GTK_WIDGET (shell->window)));
 			break;
+		case PROP_CLOSE_TO_TRAY:
+			g_value_set_boolean (value, shell->closeToTray);
+			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 			break;
@@ -200,6 +206,9 @@ liferea_shell_set_property (GObject *object, guint prop_id, const GValue *value,
 				else
 					gtk_widget_set_visible (GTK_WIDGET (shell->window), FALSE);
 			}
+			break;
+		case PROP_CLOSE_TO_TRAY:
+			shell->closeToTray = g_value_get_boolean (value);
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -280,6 +289,14 @@ liferea_shell_class_init (LifereaShellClass *klass)
 		                                               "Visibility",
 		                                               "Main window visibility",
 		                                               TRUE,
+		                                               G_PARAM_READWRITE));
+
+	g_object_class_install_property (object_class,
+		                         PROP_CLOSE_TO_TRAY,
+		                         g_param_spec_boolean ("close-to-tray",
+		                                               "Close to tray",
+		                                               "Closing the main window hides it instead of quitting",
+		                                               FALSE,
 		                                               G_PARAM_READWRITE));
 
 }
@@ -479,6 +496,13 @@ on_window_resize_cb (gpointer user_data)
 static gboolean
 on_window_close_cb (gpointer user_data)
 {
+	/* with a tray icon closing only hides the window, starting
+	   Liferea again (e.g. from a pinned launcher) shows it */
+	if (shell->closeToTray) {
+		g_object_set (G_OBJECT (shell), "visibility", FALSE, NULL);
+		return TRUE;
+	}
+
 	/* For controlled shutdown, block the window close and quit the application
 	   as shutdown sequence is handled in liferea_application.c */
 	liferea_application_shutdown ();
@@ -628,7 +652,6 @@ liferea_shell_copy_to_clipboard (const gchar *str)
 static void
 liferea_shell_restore_layout (void)
 {
-	GtkWidget	*widget;
 	gint		w, h;
 	gint		last_vpane_pos, last_hpane_pos, last_wpane_pos;
 	nodeViewType	viewMode;
@@ -638,23 +661,32 @@ liferea_shell_restore_layout (void)
 	conf_get_int_value (LAST_HPANE_POS, &last_hpane_pos);
 	conf_get_int_value (LAST_WPANE_POS, &last_wpane_pos);
 
-	/* Sanity check pane sizes for too large values */
-	/* a) set leftpane to 1/3rd of window size if too large */
-	
-	/* In GTK4 get_default_size is effectively given us the size */
+	/* Sanity check pane sizes for unset (0) or too large values. The
+	   widgets have no size yet at this point (the window is not shown),
+	   so the bounds come from the window's restored default size. Using
+	   widget sizes here gave 0 and stored collapsed panes for good. */
 	gtk_window_get_default_size (shell->window, &w, &h);
-	if (w * 95 / 100 <= last_vpane_pos || 0 == last_vpane_pos)
-		last_vpane_pos = w / 3;
+	if (w <= 0)
+		w = 1000;
+	if (h <= 0)
+		h = 700;
 
-	/* b) set normalViewPane to 50% container height if too large */
-	widget = GTK_WIDGET (liferea_shell_lookup ("normalViewPane"));
-	if ((gtk_widget_get_height (widget) * 95 / 100 <= last_hpane_pos) || 0 == last_hpane_pos)
-		last_hpane_pos = gtk_widget_get_height (widget) / 2;
+	/* a) feed list: a quarter of the window width */
+	if (last_vpane_pos <= 0 || last_vpane_pos >= w * 95 / 100)
+		last_vpane_pos = w / 4;
 
-	/* c) set wideViewPane to 50% container width if too large */
-	widget = GTK_WIDGET (liferea_shell_lookup ("wideViewPane"));
-	if ((gtk_widget_get_width (widget) * 95 / 100 <= last_wpane_pos) || 0 == last_wpane_pos)
-		last_wpane_pos = gtk_widget_get_width (widget) / 2;
+	/* b) normal view: item list takes 40% of the height */
+	if (last_hpane_pos <= 0 || last_hpane_pos >= h * 95 / 100)
+		last_hpane_pos = h * 2 / 5;
+
+	/* c) wide view: item list takes half of the remaining width */
+	if (last_wpane_pos <= 0 || last_wpane_pos >= (w - last_vpane_pos) * 95 / 100)
+		last_wpane_pos = (w - last_vpane_pos) / 2;
+
+	/* store them, the "position" bindings set up afterwards read them back */
+	conf_set_int_value (LAST_VPANE_POS, last_vpane_pos);
+	conf_set_int_value (LAST_HPANE_POS, last_hpane_pos);
+	conf_set_int_value (LAST_WPANE_POS, last_wpane_pos);
 
 	debug (DEBUG_GUI, "Restoring pane proportions (left:%d normal:%d wide:%d)", last_vpane_pos, last_hpane_pos, last_wpane_pos);
 
@@ -820,6 +852,8 @@ liferea_shell_create (GtkApplication *app, const gchar *overrideWindowState, gin
 	/* 1.) stuff where order does not matter */
 	shell->currentLayoutMode = 10000;	// something invalid
 	shell->window = GTK_WINDOW (liferea_shell_lookup ("mainwindow"));
+	/* icons are installed under the application ID */
+	gtk_window_set_icon_name (shell->window, APPLICATION_ID);
 	shell->toastOverlay = liferea_shell_lookup ("toastOverlay");
 	shell->toastRevealer = liferea_shell_create_toast_widget ();
 	shell->toastLabel = gtk_widget_get_first_child (
@@ -836,12 +870,24 @@ liferea_shell_create (GtkApplication *app, const gchar *overrideWindowState, gin
 
 	gtk_window_set_application (GTK_WINDOW (shell->window), app);
 
-	/* 2.) Load shell state and bind for persisting */
-	liferea_shell_restore_layout ();
-	conf_bind (DEFAULT_VIEW_MODE, shell, "layout-mode", G_SETTINGS_BIND_DEFAULT);
+	/* 2.) Load shell state and bind for persisting (window size first,
+	       the pane layout is derived from it). A first start (or a
+	       broken stored size) gets a usable default size. */
+	{
+		gint width = 0, height = 0;
+
+		conf_get_int_value (LAST_WINDOW_WIDTH, &width);
+		conf_get_int_value (LAST_WINDOW_HEIGHT, &height);
+		if (width < 400 || height < 300) {
+			conf_set_int_value (LAST_WINDOW_WIDTH, 1000);
+			conf_set_int_value (LAST_WINDOW_HEIGHT, 700);
+		}
+	}
 	conf_bind (LAST_WINDOW_WIDTH, shell->window, "default-width", G_SETTINGS_BIND_DEFAULT);
 	conf_bind (LAST_WINDOW_HEIGHT, shell->window, "default-height", G_SETTINGS_BIND_DEFAULT);
 	conf_bind (LAST_WINDOW_MAXIMIZED, shell->window, "maximized", G_SETTINGS_BIND_DEFAULT);
+	liferea_shell_restore_layout ();
+	conf_bind (DEFAULT_VIEW_MODE, shell, "layout-mode", G_SETTINGS_BIND_DEFAULT);
 	conf_bind (LAST_VPANE_POS, liferea_shell_lookup ("leftpane"), "position", G_SETTINGS_BIND_DEFAULT);
 	conf_bind (LAST_HPANE_POS, liferea_shell_lookup ("normalViewPane"), "position", G_SETTINGS_BIND_DEFAULT);
 	conf_bind (LAST_WPANE_POS, liferea_shell_lookup ("wideViewPane"), "position", G_SETTINGS_BIND_DEFAULT);

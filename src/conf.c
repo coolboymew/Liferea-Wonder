@@ -32,7 +32,7 @@
 
 #define MAX_GCONF_PATHLEN	256
 
-#define LIFEREA_SCHEMA_NAME		"net.sf.liferea"
+#define LIFEREA_SCHEMA_NAME		SCHEMA_ID
 #define DESKTOP_SCHEMA_NAME		"org.gnome.desktop.interface"
 #define FDO_SCHEMA_NAME			"org.freedesktop.appearance"
 
@@ -155,6 +155,14 @@ conf_set_int_value (const gchar *key, gint value)
 	g_settings_set_int (settings, key, value);
 }
 
+void
+conf_set_double_value (const gchar *key, gdouble value)
+{
+	g_assert (key != NULL);
+	debug (DEBUG_CONF, "Setting %s to %f", key, value);
+	g_settings_set_double (settings, key, value);
+}
+
 gboolean
 conf_schema_has_key (GSettings *gsettings, const gchar *key)
 {
@@ -217,6 +225,18 @@ conf_get_int_value_from_schema (GSettings *gsettings, const gchar *key, gint *va
 	if (gsettings == NULL)
 		gsettings = settings;
 	*value = g_settings_get_int (gsettings,key);
+	return (NULL != value);
+}
+
+gboolean
+conf_get_double_value_from_schema (GSettings *gsettings, const gchar *key, gdouble *value)
+{
+	g_assert (key != NULL);
+	g_assert (value != NULL);
+
+	if (gsettings == NULL)
+		gsettings = settings;
+	*value = g_settings_get_double (gsettings, key);
 	return (NULL != value);
 }
 

@@ -73,15 +73,15 @@ static void
 common_init_paths (void)
 {
 	gchar *filename;
-	gchar *lifereaCachePath  = g_build_filename (g_get_user_cache_dir(), "liferea", NULL);
+	gchar *lifereaCachePath  = g_build_filename (g_get_user_cache_dir(), USER_DIR_NAME, NULL);
 
 	common_check_dir (g_strdup (lifereaCachePath));
 	common_check_dir (g_build_filename (lifereaCachePath, "feeds", NULL));
 	common_check_dir (g_build_filename (lifereaCachePath, "favicons", NULL));
 	common_check_dir (g_build_filename (lifereaCachePath, "plugins", NULL));
 
-	common_check_dir (g_build_filename (g_get_user_config_dir(), "liferea", NULL));
-	common_check_dir (g_build_filename (g_get_user_data_dir(), "liferea", NULL));
+	common_check_dir (g_build_filename (g_get_user_config_dir(), USER_DIR_NAME, NULL));
+	common_check_dir (g_build_filename (g_get_user_data_dir(), USER_DIR_NAME, NULL));
 
 	pathsChecked = TRUE;
 
@@ -118,7 +118,7 @@ common_create_data_filename (const gchar *filename)
 	if (!pathsChecked)
 		common_init_paths ();
 
-	return g_build_filename (g_get_user_data_dir (), "liferea", filename, NULL);
+	return g_build_filename (g_get_user_data_dir (), USER_DIR_NAME, filename, NULL);
 }
 
 gchar *
@@ -127,7 +127,7 @@ common_create_config_filename (const gchar *filename)
 	if (!pathsChecked)
 		common_init_paths ();
 
-	return g_build_filename (g_get_user_config_dir (), "liferea", filename, NULL);
+	return g_build_filename (g_get_user_config_dir (), USER_DIR_NAME, filename, NULL);
 }
 
 gchar *
@@ -140,7 +140,7 @@ common_create_cache_filename (const gchar *folder, const gchar *filename, const 
 
 	result = g_strdup_printf ("%s%s%s%s%s%s%s",
 	                          g_get_user_cache_dir (),
-	                          G_DIR_SEPARATOR_S "liferea" G_DIR_SEPARATOR_S,
+	                          G_DIR_SEPARATOR_S USER_DIR_NAME G_DIR_SEPARATOR_S,
 	                          folder ? folder : "",
 	                          folder ? G_DIR_SEPARATOR_S : "",
 	                          filename,

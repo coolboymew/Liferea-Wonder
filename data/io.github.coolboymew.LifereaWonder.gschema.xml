@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
-<schemalist gettext-domain="liferea">
-  <schema gettext-domain="liferea" id="net.sf.liferea" path="/org/gnome/liferea/">
-    <child name="plugins" schema="net.sf.liferea.plugins"/>
+<schemalist gettext-domain="liferea-wonder">
+  <schema gettext-domain="liferea-wonder" id="io.github.coolboymew.LifereaWonder" path="/io/github/coolboymew/LifereaWonder/">
+    <child name="plugins" schema="io.github.coolboymew.LifereaWonder.plugins"/>
     <key name="schema-version" type="i">
       <default>0</default>
       <summary>The version of the settings schema</summary>
@@ -217,9 +217,15 @@
       <summary>Maximum number of concurrent update threads per queue.</summary>
       <description>This option determines the maximum number of concurrent update threads that can be run per update queue. Note there are two queues one for normal and one for high prio requests.</description>
     </key>
+    <key name="host-request-delay" type="d">
+      <range min="0" max="600"/>
+      <default>2.0</default>
+      <summary>Delay between requests to the same host.</summary>
+      <description>Minimum time in seconds (fractions allowed) between two update requests to the same host. Requests to the same host are queued behind each other, different hosts are still fetched in parallel. 0 disables the throttle.</description>
+    </key>
   </schema>
 
-  <schema gettext-domain="liferea" id="net.sf.liferea.plugins" path="/org/gnome/liferea/plugins/">
+  <schema gettext-domain="liferea-wonder" id="io.github.coolboymew.LifereaWonder.plugins" path="/io/github/coolboymew/LifereaWonder/plugins/">
     <key name="active-plugins" type="as">
       <default>['gnome-keyring']</default>
       <summary>Active (non-builtin) plugins</summary>

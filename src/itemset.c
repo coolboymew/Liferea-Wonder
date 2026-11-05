@@ -27,6 +27,7 @@
 #include "debug.h"
 #include "download.h"
 #include "enclosure.h"
+#include "entry_filter.h"
 #include "node_providers/feed.h"
 #include "itemlist.h"
 #include "itemset.h"
@@ -318,6 +319,10 @@ itemset_merge_items (itemSetPtr itemSet, GList *list, gboolean allowUpdates, gbo
 
 	debug (DEBUG_UPDATE, "old item set %p of (node id=%s):", itemSet, itemSet->nodeId);
 
+	/* 0. Drop entries rejected by entry filters, before anything else
+	      so they never count toward the cache limit */
+	list = entry_filter_apply (node_from_id (itemSet->nodeId), list);
+
 	/* 1. Preparation: determine effective maximum cache size
 
 	   The problem here is that the configured maximum cache
@@ -406,8 +411,12 @@ itemset_merge_items (itemSetPtr itemSet, GList *list, gboolean allowUpdates, gbo
 
 	vfolder_foreach (node_update_counters);
 
+	/* recount the feed itself too: otherwise only the feed shown in the
+	   item list got its unread count updated (via the item list), feeds
+	   updating in the background kept their old count (no unread number,
+	   no tray alert) until something else recounted them */
 	node = node_from_id (itemSet->nodeId);
-	if (node && (NODE_SOURCE_TYPE (node)->capabilities & NODE_SOURCE_CAPABILITY_ITEM_STATE_SYNC))
+	if (node && (newCount || (NODE_SOURCE_TYPE (node)->capabilities & NODE_SOURCE_CAPABILITY_ITEM_STATE_SYNC)))
 		node_update_counters (node);
 
 	debug (DEBUG_UPDATE, "added %d new items", newCount);

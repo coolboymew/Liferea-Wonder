@@ -159,6 +159,10 @@ update_options_copy (updateOptionsPtr options)
 	newOptions->username = g_strdup (options->username);
 	newOptions->password = g_strdup (options->password);
 	newOptions->dontUseProxy = options->dontUseProxy;
+	newOptions->keepCookies = options->keepCookies;
+	newOptions->useBrowser = options->useBrowser;
+	newOptions->waitFor = g_strdup (options->waitFor);
+	newOptions->scrollSeconds = options->scrollSeconds;
 	return newOptions;
 }
 void
@@ -169,6 +173,7 @@ update_options_free (updateOptionsPtr options)
 
 	g_free (options->username);
 	g_free (options->password);
+	g_free (options->waitFor);
 	g_free (options);
 }
 

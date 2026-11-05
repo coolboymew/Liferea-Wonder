@@ -86,6 +86,7 @@ icon_get (lifereaIcon icon)
 			"folder",		/* ICON_FOLDER */
 			"folder-saved-search",	/* ICON_VFOLDER */
 			"newsbin",		/* ICON_NEWSBIN */
+			"dialog-password",	/* ICON_SITE_CHECK */
 			NULL
 		};		
 

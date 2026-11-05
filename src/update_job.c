@@ -40,6 +40,7 @@
 #include "update.h"
 #include "xml.h"
 #include "parsers/gopher.h"
+#include "webkit/page_browser.h"
 #include "ui/liferea_shell.h"
 
 #if defined (G_OS_WIN32) && !defined (WIFEXITED) && !defined (WEXITSTATUS)
@@ -454,6 +455,13 @@ update_job_execute (UpdateJob *job)
 	/* if job was cancelled... */
 	if (job->callback == NULL) {
 		update_job_finished (job);
+		return;
+	}
+
+	/* page feeds loaded with the built-in browser engine */
+	if (job->request->options && job->request->options->useBrowser &&
+	    (g_str_has_prefix (job->request->source, "http://") || g_str_has_prefix (job->request->source, "https://"))) {
+		page_browser_process_request (job);
 		return;
 	}
 

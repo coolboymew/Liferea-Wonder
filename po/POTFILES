@@ -39,6 +39,7 @@ src/debug.h
 src/download.c
 src/download.h
 src/enclosure.c
+src/entry_filter.c
 src/export.c
 src/export.h
 src/favicon.c
@@ -88,6 +89,7 @@ src/node_providers/newsbin.h
 src/node_providers/vfolder.c
 src/node_providers/vfolder.h
 src/html.c
+src/install_import.c
 src/html.h
 src/item.c
 src/item.h
@@ -127,6 +129,7 @@ src/parsers/ns_slash.c
 src/parsers/ns_slash.h
 src/parsers/ns_syn.c
 src/parsers/ns_syn.h
+src/parsers/page_scraper.c
 src/parsers/rss_channel.c
 src/parsers/rss_channel.h
 src/parsers/rss_item.c
@@ -145,6 +148,8 @@ src/ui/auth_dialog.h
 src/ui/browser_tabs.c
 src/ui/browser_tabs.h
 src/ui/content_view.c
+src/ui/entry_filter_dialog.c
+src/ui/entry_filter_dialog.h
 src/ui/content_view.h
 src/ui/feed_list_view.c
 src/ui/feed_list_view.h
@@ -157,6 +162,7 @@ src/ui/liferea_browser.h
 src/ui/liferea_dialog.c
 src/ui/liferea_dialog.h
 src/ui/liferea_shell.c
+src/ui/page_feed_dialog.c
 src/ui/liferea_shell.h
 src/ui/preferences_dialog.c
 src/ui/preferences_dialog.h
@@ -193,11 +199,15 @@ resources/ui/about.ui
 resources/ui/auth.ui
 resources/ui/google_source.ui
 resources/ui/mainwindow.ui
+resources/ui/entry_filter_edit.ui
+resources/ui/entry_filters.ui
+resources/ui/folder_properties.ui
 resources/ui/mark_read_dialog.ui
 resources/ui/new_folder.ui
 resources/ui/new_newsbin.ui
 resources/ui/node_source.ui
 resources/ui/opml_source.ui
+resources/ui/page_feed.ui
 resources/ui/plugins.ui
 resources/ui/prefs.ui
 resources/ui/properties.ui

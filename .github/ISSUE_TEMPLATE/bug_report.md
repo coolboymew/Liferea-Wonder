@@ -9,9 +9,10 @@ assignees: ''
 
 <!--
 
- The issue tracker is **ONLY** used for reporting bugs!
+ The issue tracker is **ONLY** used for reporting bugs of Liferea-Wonder!
 
-Please ask for new features under [Discussions](https://github.com/lwindolf/liferea/discussions). 
+If the problem also happens in regular Liferea, please report it to the
+original project instead: https://github.com/lwindolf/liferea/issues 
 
 -->
 

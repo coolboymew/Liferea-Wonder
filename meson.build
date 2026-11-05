@@ -1,4 +1,4 @@
-project('liferea', 'c',
+project('liferea-wonder', 'c',
   version: '2.0.2',
   meson_version: '>= 0.62.0'
 )
@@ -26,12 +26,21 @@ typelibdir   = join_paths(prefix, get_option('libdir'), meson.project_name(), 'g
 webprocessextensionsdir = join_paths(prefix, get_option('libdir'), meson.project_name(), 'web-process-extensions')
 localedir    = join_paths(prefix, get_option('localedir'))
 
+# This fork has its own identity so it can be installed next to upstream
+# Liferea (e.g. the distribution package) without sharing any settings,
+# data folders or D-Bus names: binary and folders are named after the
+# project, the app ID and settings schema ID below.
+app_id    = 'io.github.coolboymew.LifereaWonder'
+schema_id = 'io.github.coolboymew.LifereaWonder'
+
 conf = configuration_data()
-conf.set_quoted('APPLICATION_ID', 'net.sf.liferea')
+conf.set_quoted('APPLICATION_ID', app_id)
+conf.set_quoted('SCHEMA_ID', schema_id)
+conf.set_quoted('USER_DIR_NAME', meson.project_name())
 conf.set_quoted('BUILD_ROOT', meson.project_build_root())
 conf.set_quoted('WEB_EXTENSIONS_DIR', webprocessextensionsdir)
 conf.set_quoted('PACKAGE', meson.project_name())
-conf.set_quoted('PACKAGE_URL', 'https://github.com/lwindolf/liferea')
+conf.set_quoted('PACKAGE_URL', 'https://github.com/coolboymew/Liferea-Wonder')
 conf.set_quoted('PACKAGE_DATA_DIR', datadir)
 conf.set_quoted('PACKAGE_LIB_DIR', libdir)
 conf.set_quoted('PACKAGE_LOCALE_DIR', localedir)
@@ -66,7 +75,7 @@ subdir('resources')
 subdir('src')
 subdir('data')
 
-liferea = executable('liferea',
+liferea = executable(meson.project_name(),
   liferea_sources + files('src/main.c'),
   liferea_resources,
   link_whole: plugins_static,
@@ -88,6 +97,7 @@ test_env.set(
 foreach name: [
   'favicon',
   'net',
+  'page_scraper',
   'parse_atom',
   'parse_date',
   'parse_enclosure',
@@ -121,9 +131,10 @@ install_subdir('resources/help', install_dir: datadir)
 
 dbus_service_file = configure_file(
   input: 'data/net.sourceforge.liferea.service.in',
-  output: 'net.sourceforge.liferea.service',
+  output: app_id + '.service',
   configuration: {
-    'LIFEREA_EXEC': join_paths(prefix, get_option('bindir'), 'liferea'),
+    'APP_ID': app_id,
+    'LIFEREA_EXEC': join_paths(prefix, get_option('bindir'), meson.project_name()),
   }
 )
 install_data(dbus_service_file, install_dir: dbusservicesdir)

@@ -1,16 +1,16 @@
 [Desktop Entry]
-Name=Liferea
+Name=Liferea-Wonder
 GenericName=Feed Reader
-X-GNOME-FullName=Liferea Feed Reader
+X-GNOME-FullName=Liferea-Wonder Feed Reader
 Comment=Read news feeds and blogs
 Keywords=news;feed;aggregator;blog;podcast;syndication;rss;atom
-Exec=liferea %U
+Exec=@EXEC@ %U
 DBusActivatable=true
-Icon=net.sourceforge.liferea
+Icon=@APP_ID@
 StartupNotify=true
 Terminal=false
 Type=Application
 Categories=Network;News;
-X-Ubuntu-Gettext-Domain=liferea
+X-Ubuntu-Gettext-Domain=@GETTEXT_PACKAGE@
 Version=1.1
 MimeType=application/rss+xml;application/atom+xml;application/rdf+xml;x-scheme-handler/feed;x-scheme-handler/gopher

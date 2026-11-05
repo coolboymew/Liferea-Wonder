@@ -98,12 +98,14 @@ feed_process_update_result (subscriptionPtr subscription, const UpdateResult * c
 		/* merge the resulting items into the node's item set */
 		itemSet = node_get_itemset (node);
 		node->newCount = itemset_merge_items (itemSet, ctxt->items, ctxt->subscription->valid, ctxt->subscription->markAsRead);
+		if (node->newCount && ctxt->subscription->trayAlert != TRAY_ALERT_NONE)
+			ctxt->subscription->trayAlertPending = TRUE;
 		if (node->newCount)
 			itemlist_merge_itemset (itemSet);
 		itemset_free (itemSet);
 
 		/* restore user defined properties if necessary */
-		if ((flags & UPDATE_REQUEST_RESET_TITLE) && ctxt->title)
+		if ((flags & UPDATE_REQUEST_RESET_TITLE) && ctxt->title && !ctxt->subscription->initialTitle)
 			node_set_title (node, ctxt->title);
 	}
 

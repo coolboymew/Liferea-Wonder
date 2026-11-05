@@ -130,6 +130,14 @@ parseRSSItem (feedParserCtxtPtr ctxt, xmlNodePtr cur)
 					item_set_description (ctxt->item, tmp);
 			}
 		}
+		else if (!xmlStrcmp (cur->name, BAD_CAST"category")) {
+			/* items can have several categories, so append (like for Atom) */
+			g_autofree gchar *tmp = unhtmlize ((gchar *)xmlNodeListGetString (cur->doc, cur->xmlChildrenNode, TRUE));
+			if (tmp && *g_strstrip (tmp)) {
+				g_autofree gchar *escaped = g_markup_escape_text (tmp, -1);
+				ctxt->item->metadata = metadata_list_append (ctxt->item->metadata, "category", escaped);
+			}
+		}
 		else if(!xmlStrcmp (cur->name, BAD_CAST"source")) {
 			g_autofree gchar *url = xml_get_attribute (cur, "url");
 			if (url)

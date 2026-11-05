@@ -25,7 +25,7 @@ from gi.repository import GObject, Liferea, Notify
 
 _ = lambda x: x
 try:
-    t = gettext.translation("liferea")
+    t = gettext.translation("liferea-wonder")
 except FileNotFoundError:
     pass
 else:
@@ -40,7 +40,7 @@ class LibnotifyPlugin(GObject.Object, Liferea.Activatable, Liferea.ShellActivata
     notification = None
     notification_title = _("Feed Updates")
     notification_body = ""
-    notification_icon = "net.sourceforge.liferea"
+    notification_icon = "io.github.coolboymew.LifereaWonder"
     _handler_id = None
 
     def do_activate(self):

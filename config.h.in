@@ -24,3 +24,8 @@
 #define PACKAGE_LOCALE_DIR @PACKAGE_LOCALE_DIR@
 
 #define WEB_EXTENSIONS_DIR @WEB_EXTENSIONS_DIR@
+
+/* Identity of this fork (see meson.build) */
+#define APPLICATION_ID @APPLICATION_ID@
+#define SCHEMA_ID @SCHEMA_ID@
+#define USER_DIR_NAME @USER_DIR_NAME@

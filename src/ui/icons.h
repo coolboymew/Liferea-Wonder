@@ -32,6 +32,7 @@ typedef enum {
 	ICON_FOLDER,
 	ICON_VFOLDER,
 	ICON_NEWSBIN,
+	ICON_SITE_CHECK,
 	MAX_ICONS
 } lifereaIcon;
 

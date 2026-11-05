@@ -88,7 +88,7 @@ default_source_add_subscription (Node *node, subscriptionPtr subscription)
 	   feed subscriptions implemented by the feed node and 
 	   subscription type... */
 	Node *child = node_new ("feed");
-	node_set_title (child, _("New Subscription"));
+	node_set_title (child, subscription->initialTitle?subscription->initialTitle:_("New Subscription"));
 	node_set_subscription (child, subscription);	/* feed subscription type is implicit */
 	feedlist_node_added (child);
 	

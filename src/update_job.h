@@ -66,6 +66,8 @@ struct _UpdateJob {
 	updateFlags		flags;		/*<< request and result processing flags */
 	gint			state;		/*<< State of the job (enum request_state) */
 	updateCommandState	cmd;		/*<< values for command feeds */
+	gchar			*throttleHost;	/*<< host whose request slot this job holds (or NULL) */
+	gboolean		cookieRetry;	/*<< TRUE once a cookie gate redirect was retried (see net.c) */
 };
 
 /**

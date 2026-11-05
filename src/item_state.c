@@ -85,6 +85,14 @@ item_read_state_changed (itemPtr item, gboolean newState)
 
 	/* 5. updated feed list unread counters */
 	node = node_from_id (item->nodeId);
+
+	/* reading an item of a feed acknowledges its tray icon alert,
+	   the counter update below makes the tray icon refresh */
+	if (newState && node && node->subscription && node->subscription->trayAlertPending) {
+		node->subscription->trayAlertPending = FALSE;
+		feedlist_schedule_save ();	/* the alert state is kept in the feed list */
+	}
+
 	node_update_counters (node);
 
 	/* 6. duplicate state propagation (only for transition to read!) */

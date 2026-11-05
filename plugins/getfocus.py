@@ -24,7 +24,7 @@ from gi.repository import GObject, Gtk, Liferea
 # Initialize translations for tooltips
 _ = lambda x: x
 try:
-    t = gettext.translation("liferea")
+    t = gettext.translation("liferea-wonder")
 except FileNotFoundError:
     pass
 else:
@@ -34,7 +34,7 @@ FILE_CONFIG = 'opacity.conf'
 UI_FILE_PATH = os.path.join(os.path.dirname(__file__), "getfocus.ui")
 
 def get_path():
-    config_path = "liferea/plugins/getfocus"
+    config_path = "liferea-wonder/plugins/getfocus"
     config_home = os.getenv('XDG_CONFIG_HOME',Path.joinpath(Path.home(), ".config"))
     return Path.joinpath(Path(config_home), config_path)
 

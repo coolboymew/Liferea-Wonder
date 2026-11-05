@@ -200,6 +200,27 @@ html_auto_discover_collect_links (xmlNodePtr match, gpointer user_data)
 	}
 }
 
+/* Fallback for sites that link their feeds only in the page body
+   (no <link rel="alternate">): anchors whose address looks like a feed,
+   e.g. "/feed", "/feeds/latest", "/rss", "news.rss" or "index.atom". */
+static void
+html_auto_discover_collect_feed_anchors (xmlNodePtr match, gpointer user_data)
+{
+	static GRegex	*feedLike = NULL;
+	GSList		**links = (GSList **)user_data;
+	gchar		*link = xml_get_attribute (match, "href");
+
+	if (!feedLike)
+		feedLike = g_regex_new ("(^|/)(feeds?|rss|atom)(/|\\.|\\?|$)|\\.(rss|atom|rdf)(\\?|$)",
+		                        G_REGEX_CASELESS | G_REGEX_OPTIMIZE, 0, NULL);
+
+	if (link && g_regex_match (feedLike, link, 0, NULL) &&
+	    !g_slist_find_custom (*links, link, (GCompareFunc)g_strcmp0))
+		*links = g_slist_append (*links, link);
+	else
+		g_free (link);
+}
+
 static void
 html_auto_discover_collect_meta (xmlNodePtr match, gpointer user_data)
 {
@@ -239,6 +260,10 @@ html_auto_discover_feed (const gchar* data, const gchar *defaultBaseUri)
 		gchar *tmp = search_links_dirty (data, LINK_RSS_ALTERNATE);
 		if (tmp)
 			links = g_slist_append (links, tmp);
+	}
+	if (!links) {
+		debug (DEBUG_UPDATE, "searching through anchors for feed-like links");
+		xpath_foreach_match (root, "//a[@href]", html_auto_discover_collect_feed_anchors, (gpointer)&links);
 	}
 
 	/* Turn relative URIs into absolute URIs */

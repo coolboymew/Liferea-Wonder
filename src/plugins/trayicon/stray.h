@@ -148,6 +148,10 @@ int stray_register(TrayIcon *icon);
 /* Returns the Unix file descriptor for the D-Bus connection */
 int stray_get_fd(TrayIcon *icon);
 
+/* returns the last activation token sent by the host (or NULL), the
+   caller frees it */
+char *stray_take_activation_token(TrayIcon *icon);
+
 /* Menu API */
 
 /* Creates the menu */
@@ -252,6 +256,10 @@ struct TrayIcon {
     int icon_pixmap_count;
 
     dbus_uint32_t window_id;
+
+    /* Wayland activation token the host sends before Activate, lets the
+       application raise its window (see stray_take_activation_token) */
+    char *activation_token;
 
     StrayPixmap *icon_pixmaps;
     DBusConnection *conn;
@@ -387,7 +395,8 @@ static void get_icon_properties(
     *out_icon = icon->icon_name ? icon->icon_name : STRAY_DEFAULT_ICON;
     *out_title = icon->title ? icon->title : STRAY_DEFAULT_TITLE;
     *out_menu = icon->menu ? STRAY_MENU_OBJECT_PATH : "/NO_DBUSMENU";
-    *out_is_menu = (icon->menu != NULL);
+    /* not a menu: left click is Activate, the menu opens on right click */
+    *out_is_menu = 0;
     *out_id = icon->app_id ? icon->app_id : STRAY_DEFAULT_ID;
     *out_window_id = icon->window_id;
     *out_status = status_to_string(icon->status);
@@ -1409,6 +1418,17 @@ message_handler(DBusConnection *conn, DBusMessage *msg, void *data) {
             }
 
             reply = dbus_message_new_method_return(msg);
+        } else if (strcmp(member, "ProvideXdgActivationToken") == 0) {
+            const char *token = NULL;
+
+            if (dbus_message_get_args(
+                    msg, NULL, DBUS_TYPE_STRING, &token, DBUS_TYPE_INVALID
+                )) {
+                safe_free(&icon->activation_token);
+                icon->activation_token = safe_strdup(token);
+            }
+
+            reply = dbus_message_new_method_return(msg);
         } else if (strcmp(member, "NewIcon") == 0) {
             reply = dbus_message_new_method_return(msg);
         }
@@ -1738,6 +1758,15 @@ int stray_register(TrayIcon *icon) {
     process_events_with_timeout(icon->conn, 100);
     icon->registered = 1;
     return 1;
+}
+
+char *stray_take_activation_token(TrayIcon *icon) {
+    char *token;
+
+    if (!icon) return NULL;
+    token = icon->activation_token;
+    icon->activation_token = NULL;
+    return token;
 }
 
 void stray_set_click_callback(
@@ -2178,6 +2207,7 @@ void stray_destroy(TrayIcon *icon) {
 
     safe_free(&icon->tooltip_title);
     safe_free(&icon->tooltip_text);
+    safe_free(&icon->activation_token);
 
     if (icon->conn) {
         dbus_connection_unregister_object_path(icon->conn, STRAY_OBJECT_PATH);

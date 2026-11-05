@@ -1,0 +1,217 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<interface>
+  <!-- interface-name entry_filter_edit.ui -->
+  <requires lib="gtk" version="4.0"/>
+  <requires lib="libadwaita" version="1.5"/>
+  <object class="AdwDialog" id="entry_filter_edit">
+    <property name="default-widget">applyBtn</property>
+    <property name="title" translatable="yes">Edit Entry Filter</property>
+    <property name="width-request">520</property>
+    <property name="height-request">640</property>
+    <child>
+      <object class="GtkBox">
+        <property name="orientation">vertical</property>
+        <child>
+          <object class="AdwHeaderBar"/>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <property name="margin-bottom">12</property>
+            <property name="margin-end">12</property>
+            <property name="margin-start">12</property>
+            <property name="margin-top">12</property>
+            <property name="orientation">vertical</property>
+            <property name="spacing">6</property>
+            <property name="vexpand">1</property>
+            <child>
+              <object class="GtkListBox">
+                <property name="css-classes">boxed-list</property>
+                <property name="selection-mode">none</property>
+                <child>
+                  <object class="AdwEntryRow" id="nameEntry">
+                    <property name="title" translatable="yes">Name</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="AdwEntryRow" id="patternEntry">
+                    <property name="title" translatable="yes">Word, phrase or regular expression</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkGrid">
+                <property name="column-spacing">12</property>
+                <property name="margin-top">6</property>
+                <property name="row-spacing">6</property>
+                <child>
+                  <object class="GtkLabel">
+                    <property name="label" translatable="yes">_Match:</property>
+                    <property name="mnemonic-widget">matchDropDown</property>
+                    <property name="use-underline">1</property>
+                    <property name="xalign">0.0</property>
+                    <layout>
+                      <property name="column">0</property>
+                      <property name="row">0</property>
+                    </layout>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkDropDown" id="matchDropDown">
+                    <property name="hexpand">1</property>
+                    <layout>
+                      <property name="column">1</property>
+                      <property name="row">0</property>
+                    </layout>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkLabel">
+                    <property name="label" translatable="yes">_Action:</property>
+                    <property name="mnemonic-widget">actionDropDown</property>
+                    <property name="use-underline">1</property>
+                    <property name="xalign">0.0</property>
+                    <layout>
+                      <property name="column">0</property>
+                      <property name="row">1</property>
+                    </layout>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkDropDown" id="actionDropDown">
+                    <property name="hexpand">1</property>
+                    <layout>
+                      <property name="column">1</property>
+                      <property name="row">1</property>
+                    </layout>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkCheckButton" id="caseCheck">
+                <property name="label" translatable="yes">Case _sensitive</property>
+                <property name="use-underline">1</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkCheckButton" id="enabledCheck">
+                <property name="active">1</property>
+                <property name="label" translatable="yes">_Enabled</property>
+                <property name="use-underline">1</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkLabel">
+                <property name="label" translatable="yes">Look In</property>
+                <property name="margin-top">6</property>
+                <property name="xalign">0.0</property>
+                <attributes>
+                  <attribute name="weight" value="bold"/>
+                </attributes>
+              </object>
+            </child>
+            <child>
+              <object class="GtkFlowBox">
+                <property name="column-spacing">12</property>
+                <property name="max-children-per-line">5</property>
+                <property name="selection-mode">none</property>
+                <child>
+                  <object class="GtkCheckButton" id="fieldTitle">
+                    <property name="label" translatable="yes">Title</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkCheckButton" id="fieldContent">
+                    <property name="label" translatable="yes">Content</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkCheckButton" id="fieldAuthor">
+                    <property name="label" translatable="yes">Author</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkCheckButton" id="fieldCategory">
+                    <property name="label" translatable="yes">Categories</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkCheckButton" id="fieldLink">
+                    <property name="label" translatable="yes">Link</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkLabel">
+                <property name="label" translatable="yes">Apply To</property>
+                <property name="margin-top">6</property>
+                <property name="xalign">0.0</property>
+                <attributes>
+                  <attribute name="weight" value="bold"/>
+                </attributes>
+              </object>
+            </child>
+            <child>
+              <object class="GtkCheckButton" id="allFeedsRadio">
+                <property name="label" translatable="yes">All _feeds</property>
+                <property name="use-underline">1</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkCheckButton" id="selectedFeedsRadio">
+                <property name="active">1</property>
+                <property name="group">allFeedsRadio</property>
+                <property name="label" translatable="yes">Only the feeds and folders _checked below (a folder includes everything inside)</property>
+                <property name="use-underline">1</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkScrolledWindow" id="nodeScroll">
+                <property name="has-frame">1</property>
+                <property name="hscrollbar-policy">never</property>
+                <property name="min-content-height">140</property>
+                <property name="vexpand">1</property>
+                <child>
+                  <object class="GtkListBox" id="nodeList">
+                    <property name="selection-mode">none</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="errorLabel">
+                <property name="max-width-chars">55</property>
+                <property name="visible">0</property>
+                <property name="wrap">1</property>
+                <property name="xalign">0.0</property>
+                <property name="css-classes">error</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkBox">
+                <property name="halign">end</property>
+                <property name="margin-top">6</property>
+                <property name="spacing">6</property>
+                <child>
+                  <object class="GtkButton" id="cancelBtn">
+                    <property name="label" translatable="yes">_Cancel</property>
+                    <property name="use-underline">1</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton" id="applyBtn">
+                    <property name="css-classes">suggested-action</property>
+                    <property name="label" translatable="yes">_OK</property>
+                    <property name="use-underline">1</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>

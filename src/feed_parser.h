@@ -107,6 +107,19 @@ feedParserCtxtPtr feed_parser_ctxt_new (subscriptionPtr subscription, const gcha
 void feed_parser_ctxt_free (feedParserCtxtPtr ctxt);
 
 /**
+ * Parses data without a feed list node, e.g. to check whether an
+ * address serves a feed. Never starts auto discovery.
+ *
+ * @param source	the address the data came from
+ * @param data		the downloaded data
+ * @param size		size of the data
+ * @param title		(out) (nullable): the feed title (or NULL)
+ *
+ * @returns the matching feed handler (NULL if not a feed)
+ */
+feedHandlerPtr feed_parser_probe (const gchar *source, const gchar *data, gsize size, gchar **title);
+
+/**
  * Lookup a feed type string from the feed type id.
  *
  * @param id	feed type id

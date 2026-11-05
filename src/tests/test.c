@@ -6,6 +6,7 @@ extern int test_net (int argc, char *argv[]);
 extern int test_parse_date (int argc, char *argv[]);
 extern int test_parse_enclosure (int argc, char *argv[]);
 extern int test_parse_html (int argc, char *argv[]);
+extern int test_page_scraper (int argc, char *argv[]);
 extern int test_parse_uri (int argc, char *argv[]);
 extern int test_parse_xml (int argc, char *argv[]);
 extern int test_rule (int argc, char *argv[]);
@@ -30,6 +31,8 @@ int run_test (int argc, char *argv[]) {
                         return test_parse_enclosure (argc, argv);
                 if (g_str_equal (argv[2], "parse_html"))
                         return test_parse_html (argc, argv);
+                if (g_str_equal (argv[2], "page_scraper"))
+                        return test_page_scraper (argc, argv);
                 if (g_str_equal (argv[2], "parse_rss"))
                         return test_parse_rss (argc, argv);
                 if (g_str_equal (argv[2], "parse_uri"))

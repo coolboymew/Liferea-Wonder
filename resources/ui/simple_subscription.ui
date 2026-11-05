@@ -22,8 +22,20 @@ title-3</property>
           </object>
         </child>
         <child>
-          <object class="AdwEntryRow" id="sourceEntry">
-            <property name="title">Website or Feed URL</property>
+          <object class="GtkListBox">
+            <property name="css-classes">boxed-list</property>
+            <property name="selection-mode">none</property>
+            <child>
+              <object class="AdwEntryRow" id="sourceEntry">
+                <property name="title">Website or Feed URL</property>
+              </object>
+            </child>
+            <child>
+              <object class="AdwEntryRow" id="nameEntry">
+                <property name="title" translatable="yes">Name</property>
+                <property name="tooltip-text" translatable="yes">Filled in from the feed once the address is entered. Change it to name the subscription yourself, or leave it empty to use the feed's own title.</property>
+              </object>
+            </child>
           </object>
         </child>
         <child>
@@ -33,6 +45,13 @@ title-3</property>
             <child>
               <object class="GtkButton" id="cancelBtn">
                 <property name="label">_Cancel</property>
+                <property name="use-underline">True</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkButton" id="pageFeedBtn">
+                <property name="label" translatable="yes">_Web Page...</property>
+                <property name="tooltip-text" translatable="yes">For pages without a feed (e.g. shop or search results): make a feed from the items listed on the page</property>
                 <property name="use-underline">True</property>
               </object>
             </child>

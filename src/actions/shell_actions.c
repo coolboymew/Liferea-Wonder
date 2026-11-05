@@ -31,6 +31,7 @@
 #include "export.h"
 #include "feedlist.h"
 #include "item.h"
+#include "install_import.h"
 #include "item_history.h"
 #include "liferea_application.h"
 #include "net_monitor.h"
@@ -39,6 +40,8 @@
 #include "node_providers/newsbin.h"
 #include "node_providers/vfolder.h"
 #include "ui/browser_tabs.h"
+#include "ui/entry_filter_dialog.h"
+#include "ui/page_feed_dialog.h"
 #include "ui/feed_list_view.h"
 #include "ui/icons.h"
 #include "ui/item_list_view.h"
@@ -73,6 +76,49 @@ on_prefbtn_clicked (GSimpleAction *action, GVariant *parameter, gpointer user_da
 }
 
 static void
+on_import_other_liferea_confirmed (gpointer user_data)
+{
+	if (!install_import_schedule ()) {
+		ui_show_error_box (_("Could not prepare the import."));
+		return;
+	}
+	install_import_restart ();
+	liferea_application_shutdown ();
+}
+
+static void
+on_import_other_liferea (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+	g_autofree gchar *found = install_import_describe_source ();
+	g_autofree gchar *text = NULL;
+
+	if (!found) {
+		ui_show_info_box (_("No other Liferea installation was found (looked for ~/.config/liferea and ~/.local/share/liferea)."));
+		return;
+	}
+
+	text = g_strdup_printf (_("Found the regular Liferea with %s.\n\n"
+	                          "Its feed list, database (all items and their read and flag states), "
+	                          "favicons, stylesheet and settings will replace the ones of this fork. "
+	                          "The current ones are moved to a backup folder in ~/.local/share/liferea-wonder. "
+	                          "Liferea-Wonder restarts to do this."), found);
+	ui_confirm_box (_("Import From Liferea"), text, _("_Import and Restart"),
+	                on_import_other_liferea_confirmed, NULL, NULL);
+}
+
+static void
+on_new_page_feed_activate (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+	page_feed_dialog_new (NULL);
+}
+
+static void
+on_entry_filters_activate (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+	entry_filter_dialog_open ();
+}
+
+static void
 on_searchbtn_clicked (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
 	simple_search_dialog_open ();
@@ -85,6 +131,7 @@ on_about_activate (GSimpleAction *action, GVariant *parameter, gpointer user_dat
 
 	dialog = liferea_dialog_new ("about");
 	gtk_about_dialog_set_version (GTK_ABOUT_DIALOG (dialog), VERSION);
+	gtk_about_dialog_set_logo_icon_name (GTK_ABOUT_DIALOG (dialog), APPLICATION_ID);
 	gtk_window_present (GTK_WINDOW (dialog));
 }
 
@@ -227,6 +274,7 @@ on_print_activate (GSimpleAction *action, GVariant *parameter, gpointer user_dat
 static const GActionEntry gaction_entries[] = {
 	{"update-all", on_menu_update_all, NULL, NULL, NULL},
 	{"import-feed-list", on_menu_import, NULL, NULL, NULL},
+	{"import-other-liferea", on_import_other_liferea, NULL, NULL, NULL},
 	{"export-feed-list", on_menu_export, NULL, NULL, NULL},
 	{"quit", on_menu_quit, NULL, NULL, NULL},
 	{"prev-read-item", on_prev_read_item_activate, NULL, NULL, NULL},
@@ -236,6 +284,8 @@ static const GActionEntry gaction_entries[] = {
 	{"zoom-reset", on_zoomreset_activate, NULL, NULL, NULL},
 	{"show-update-monitor", on_menu_show_update_monitor, NULL, NULL, NULL},
 	{"show-preferences", on_prefbtn_clicked, NULL, NULL, NULL},
+	{"show-entry-filters", on_entry_filters_activate, NULL, NULL, NULL},
+	{"new-page-feed", on_new_page_feed_activate, NULL, NULL, NULL},
 	{"search-feeds", on_searchbtn_clicked, NULL, NULL, NULL},
 	{"discover-feeds", on_discover_feeds_activate, NULL, NULL, NULL},
 	{"show-help-contents", on_topics_activate, NULL, NULL, NULL},

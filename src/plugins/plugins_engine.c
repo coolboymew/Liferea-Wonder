@@ -62,7 +62,7 @@ liferea_plugins_engine_init (LifereaPluginsEngine *plugins)
 	gsize			length;
 	GError			*error = NULL;
 
-	g_autoptr(GSettings)	plugin_settings = g_settings_new ("net.sf.liferea.plugins");
+	g_autoptr(GSettings)	plugin_settings = g_settings_new (SCHEMA_ID ".plugins");
 	g_autoptr(GVariant)	vlist;
 	g_autoptr(GStrvBuilder)	b;
 
@@ -107,7 +107,7 @@ liferea_plugins_engine_init (LifereaPluginsEngine *plugins)
 		error = NULL;
 	}
 
-	g_autofree gchar *userdata = g_build_filename (g_get_user_data_dir (), "liferea", "plugins", NULL);
+	g_autofree gchar *userdata = g_build_filename (g_get_user_data_dir (), USER_DIR_NAME, "plugins", NULL);
 	g_autofree gchar *data = g_build_filename (PACKAGE_DATA_DIR, "plugins", NULL);
 	g_autofree gchar *lib = g_build_filename (PACKAGE_LIB_DIR, "plugins", NULL);
 

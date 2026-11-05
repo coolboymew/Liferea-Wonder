@@ -1,0 +1,281 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<interface>
+  <!-- interface-name page_feed.ui -->
+  <requires lib="gtk" version="4.0"/>
+  <requires lib="libadwaita" version="1.5"/>
+  <object class="AdwDialog" id="page_feed">
+    <property name="default-widget">applyBtn</property>
+    <property name="title" translatable="yes">Feed From Web Page</property>
+    <property name="content-width">620</property>
+    <property name="content-height">720</property>
+    <child>
+      <object class="GtkBox">
+        <property name="orientation">vertical</property>
+        <child>
+          <object class="AdwHeaderBar"/>
+        </child>
+        <child>
+          <object class="GtkScrolledWindow">
+            <property name="hscrollbar-policy">never</property>
+            <property name="vexpand">1</property>
+            <child>
+              <object class="GtkBox">
+                <property name="margin-bottom">12</property>
+                <property name="margin-end">12</property>
+                <property name="margin-start">12</property>
+                <property name="margin-top">12</property>
+                <property name="orientation">vertical</property>
+                <property name="spacing">8</property>
+                <child>
+                  <object class="GtkLabel">
+                    <property name="label" translatable="yes">Makes a feed from a page listing things that has no feed of its own, like shop or search results. Each item on the page becomes an entry, and new items show up as new entries.</property>
+                    <property name="max-width-chars">60</property>
+                    <property name="wrap">1</property>
+                    <property name="xalign">0.0</property>
+                    <property name="css-classes">dim-label</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkListBox">
+                    <property name="css-classes">boxed-list</property>
+                    <property name="selection-mode">none</property>
+                    <child>
+                      <object class="AdwEntryRow" id="urlEntry">
+                        <property name="title" translatable="yes">Page address</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="AdwEntryRow" id="nameEntry">
+                        <property name="title" translatable="yes">Name (empty: the page title)</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkBox">
+                    <property name="spacing">12</property>
+                    <child>
+                      <object class="GtkCheckButton" id="useBrowserCheck">
+                        <property name="hexpand">1</property>
+                        <property name="label" translatable="yes">Load with the _built-in browser (pages built by JavaScript, sites with a browser check)</property>
+                        <property name="use-underline">1</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="openPageBtn">
+                        <property name="label" translatable="yes">_Open Page...</property>
+                        <property name="tooltip-text" translatable="yes">Opens the page in a browser window of the same session: pass a site's browser check, confirm your age or log in once, go to the section you want and click "Detect Items Here" when its items are shown</property>
+                        <property name="use-underline">1</property>
+                        <property name="valign">center</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkBox">
+                    <property name="spacing">6</property>
+                    <property name="margin-start">28</property>
+                    <property name="sensitive" bind-source="useBrowserCheck" bind-property="active" bind-flags="sync-create"/>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="label" translatable="yes">Scroll down the page for</property>
+                        <property name="mnemonic-widget">scrollSpin</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkSpinButton" id="scrollSpin">
+                        <property name="adjustment">
+                          <object class="GtkAdjustment">
+                            <property name="upper">120</property>
+                            <property name="step-increment">1</property>
+                            <property name="page-increment">10</property>
+                          </object>
+                        </property>
+                        <property name="numeric">1</property>
+                        <property name="tooltip-text" translatable="yes">For pages that show more items as you scroll down. 0 does not scroll.</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="label" translatable="yes">seconds before reading it (0: no scrolling)</property>
+                        <property name="xalign">0.0</property>
+                        <property name="wrap">1</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkCheckButton" id="keepCookiesCheck">
+                    <property name="active">1</property>
+                    <property name="label" translatable="yes">_Keep cookies the site sets (needed for sites showing a language or age check first)</property>
+                    <property name="use-underline">1</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkBox">
+                    <property name="margin-top">6</property>
+                    <property name="spacing">12</property>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="hexpand">1</property>
+                        <property name="label" translatable="yes">What Is an Item</property>
+                        <property name="xalign">0.0</property>
+                        <attributes>
+                          <attribute name="weight" value="bold"/>
+                        </attributes>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="detectBtn">
+                        <property name="label" translatable="yes">_Detect</property>
+                        <property name="tooltip-text" translatable="yes">Loads the page and guesses the selectors from blocks that repeat with a link and a picture</property>
+                        <property name="use-underline">1</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="previewBtn">
+                        <property name="label" translatable="yes">_Preview</property>
+                        <property name="use-underline">1</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkGrid">
+                    <property name="column-spacing">12</property>
+                    <property name="row-spacing">6</property>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="label" translatable="yes">_Item block:</property>
+                        <property name="mnemonic-widget">itemEntry</property>
+                        <property name="use-underline">1</property>
+                        <property name="xalign">0.0</property>
+                        <layout><property name="column">0</property><property name="row">0</property></layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkEntry" id="itemEntry">
+                        <property name="hexpand">1</property>
+                        <property name="placeholder-text">div.item</property>
+                        <layout><property name="column">1</property><property name="row">0</property></layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="label" translatable="yes">_Title:</property>
+                        <property name="mnemonic-widget">titleEntry</property>
+                        <property name="use-underline">1</property>
+                        <property name="xalign">0.0</property>
+                        <layout><property name="column">0</property><property name="row">1</property></layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkEntry" id="titleEntry">
+                        <property name="placeholder-text">.title</property>
+                        <layout><property name="column">1</property><property name="row">1</property></layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="label" translatable="yes">_Link:</property>
+                        <property name="mnemonic-widget">linkEntry</property>
+                        <property name="use-underline">1</property>
+                        <property name="xalign">0.0</property>
+                        <layout><property name="column">0</property><property name="row">2</property></layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkEntry" id="linkEntry">
+                        <property name="placeholder-text" translatable="yes">first link in the title</property>
+                        <layout><property name="column">1</property><property name="row">2</property></layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="label" translatable="yes">Pict_ure:</property>
+                        <property name="mnemonic-widget">imageEntry</property>
+                        <property name="use-underline">1</property>
+                        <property name="xalign">0.0</property>
+                        <layout><property name="column">0</property><property name="row">3</property></layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkEntry" id="imageEntry">
+                        <property name="placeholder-text" translatable="yes">none (e.g. img)</property>
+                        <layout><property name="column">1</property><property name="row">3</property></layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="label" translatable="yes">E_xtra text:</property>
+                        <property name="mnemonic-widget">textEntry</property>
+                        <property name="use-underline">1</property>
+                        <property name="xalign">0.0</property>
+                        <layout><property name="column">0</property><property name="row">4</property></layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkEntry" id="textEntry">
+                        <property name="placeholder-text" translatable="yes">none (e.g. .price)</property>
+                        <layout><property name="column">1</property><property name="row">4</property></layout>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkLabel">
+                    <property name="label" translatable="yes">Selectors: tag, .class, #id, [attribute] or [attribute=value], combined like div.item[data-id] and nested with spaces (.title a) or &gt;. Title, link, picture and extra text are looked for inside each item block. XPath works too when starting with / or ./</property>
+                    <property name="max-width-chars">60</property>
+                    <property name="wrap">1</property>
+                    <property name="xalign">0.0</property>
+                    <property name="css-classes">dim-label</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="previewStatus">
+                    <property name="margin-top">6</property>
+                    <property name="max-width-chars">60</property>
+                    <property name="wrap">1</property>
+                    <property name="xalign">0.0</property>
+                    <attributes>
+                      <attribute name="weight" value="bold"/>
+                    </attributes>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkListBox" id="previewList">
+                    <property name="css-classes">boxed-list</property>
+                    <property name="selection-mode">none</property>
+                    <property name="visible">0</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <property name="halign">end</property>
+            <property name="margin-bottom">12</property>
+            <property name="margin-end">12</property>
+            <property name="margin-top">6</property>
+            <property name="spacing">6</property>
+            <child>
+              <object class="GtkButton" id="cancelBtn">
+                <property name="label" translatable="yes">_Cancel</property>
+                <property name="use-underline">1</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkButton" id="applyBtn">
+                <property name="css-classes">suggested-action</property>
+                <property name="label" translatable="yes">_Subscribe</property>
+                <property name="use-underline">1</property>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>

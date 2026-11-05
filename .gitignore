@@ -44,3 +44,6 @@ node_modules
 builddir/
 po/.intltool-merge-cache.lock
 .gdb_history
+
+# installation bundles (packaging/INSTALL-CachyOS.md)
+/dist/

@@ -22,14 +22,18 @@
 
 #include "common.h"
 #include "debug.h"
+#include "feedlist.h"
 #include "html.h"
 #include "metadata.h"
+#include "node.h"
+#include "update.h"
 #include "xml.h"
 #include "parsers/atom10.h"
 #include "parsers/html5_feed.h"
 #include "parsers/ldjson_feed.h"
 #include "parsers/rss_channel.h"
 #include "parsers/gopher.h"
+#include "parsers/page_scraper.h"
 
 #define AUTO_DISCOVERY_MAX_REDIRECTS	5
 
@@ -60,6 +64,7 @@ feed_parsers_get_list (void)
 	feedHandlers = g_slist_append (feedHandlers, ldjson_init_feed_handler ());
 	feedHandlers = g_slist_append (feedHandlers, html5_init_feed_handler ());
 	feedHandlers = g_slist_append (feedHandlers, gopher_init_feed_handler ());
+	feedHandlers = g_slist_append (feedHandlers, page_scraper_init_feed_handler ());
 
 	atexit(feed_parsers_cleanup);
 
@@ -117,6 +122,124 @@ feed_parser_ctxt_free (feedParserCtxtPtr ctxt)
 	}
 }
 
+/* Common feed addresses tried as a last resort when a page has neither
+   a feed link tag nor a feed-like link, relative to the page's folder
+   and to the site root (WordPress, Blogger, Hugo, Jekyll, ...). */
+static const gchar *guessedFeedPaths[] = {
+	"feed", "rss", "feed.xml", "rss.xml", "atom.xml", "index.xml", "feeds/posts/default", NULL
+};
+
+static void feed_parser_guess_next (subscriptionPtr subscription);
+
+feedHandlerPtr
+feed_parser_probe (const gchar *source, const gchar *data, gsize size, gchar **title)
+{
+	Node			*node = node_new ("feed");
+	subscriptionPtr		subscription = subscription_new (source, NULL, NULL);
+	feedParserCtxtPtr	ctxt;
+	feedHandlerPtr		handler = NULL;
+
+	/* A throw-away node and subscription (some parsers set the node
+	   title directly). Auto discovery is disabled as it would start
+	   real subscription updates. */
+	subscription->autoDiscoveryTries = G_MAXUINT / 2;
+	subscription->node = node;
+	node->subscription = subscription;
+
+	ctxt = feed_parser_ctxt_new (subscription, data, size);
+	if (feed_parse (ctxt) && subscription->fhp) {
+		handler = subscription->fhp;
+		if (title)
+			*title = g_strdup (ctxt->title?ctxt->title:node_get_title (node));
+	}
+	g_list_free_full (ctxt->items, g_object_unref);
+	ctxt->items = NULL;
+	feed_parser_ctxt_free (ctxt);
+	g_object_unref (node);	/* also frees the subscription */
+
+	return handler;
+}
+
+static gboolean
+feed_parser_guess_cb (UpdateJob *job)
+{
+	subscriptionPtr	subscription = (subscriptionPtr)job->user_data;
+	feedHandlerPtr	handler = NULL;
+
+	if (job->result->data && job->result->httpstatus >= 200 && job->result->httpstatus < 300)
+		handler = feed_parser_probe (job->request->source, job->result->data, job->result->size, NULL);
+
+	/* HTML extractors would accept any page, we want a real feed */
+	if (handler && !handler->html) {
+		debug (DEBUG_UPDATE, "Guessed feed address works: %s", job->request->source);
+		g_slist_free_full (subscription->discoveryCandidates, g_free);
+		subscription->discoveryCandidates = NULL;
+		subscription_set_source (subscription, job->request->source);
+		subscription_update (subscription, UPDATE_REQUEST_RESET_TITLE | UPDATE_REQUEST_PRIORITY_HIGH);
+	} else {
+		feed_parser_guess_next (subscription);
+	}
+
+	return TRUE;
+}
+
+static void
+feed_parser_guess_next (subscriptionPtr subscription)
+{
+	g_autofree gchar	*url = NULL;
+	UpdateRequest		*request;
+
+	if (!subscription->discoveryCandidates) {
+		debug (DEBUG_UPDATE, "None of the common feed addresses worked for %s", subscription_get_source (subscription));
+		subscription->error = FETCH_ERROR_DISCOVER;
+		if (subscription->node) {
+			subscription->node->available = FALSE;
+			feedlist_node_was_updated (subscription->node);
+		}
+		return;
+	}
+
+	url = subscription->discoveryCandidates->data;
+	subscription->discoveryCandidates = g_slist_delete_link (subscription->discoveryCandidates, subscription->discoveryCandidates);
+
+	debug (DEBUG_UPDATE, "Trying common feed address %s", url);
+	/* no subscription options, as for the blogroll (see Github #678) */
+	request = update_request_new ("GET", url, NULL, NULL);
+	update_job_new (subscription, request, feed_parser_guess_cb, subscription, UPDATE_REQUEST_NO_FEED);
+}
+
+/* Starts trying common feed addresses, returns FALSE if there are none to try */
+static gboolean
+feed_parser_guess_start (subscriptionPtr subscription)
+{
+	const gchar	*page = subscription_get_source (subscription);
+	const gchar	*bases[] = { "", "/", NULL };
+
+	if (subscription->discoveryGuessed || !page ||
+	    !(g_str_has_prefix (page, "http://") || g_str_has_prefix (page, "https://")))
+		return FALSE;
+
+	subscription->discoveryGuessed = TRUE;
+
+	/* "" resolves against the page's folder, "/" against the site root */
+	for (guint b = 0; bases[b]; b++) {
+		for (guint p = 0; guessedFeedPaths[p]; p++) {
+			g_autofree gchar *relative = g_strconcat (bases[b], guessedFeedPaths[p], NULL);
+			gchar *url = g_uri_resolve_relative (page, relative, G_URI_FLAGS_NONE, NULL);
+
+			if (url && !g_str_equal (url, page) &&
+			    !g_slist_find_custom (subscription->discoveryCandidates, url, (GCompareFunc)g_strcmp0))
+				subscription->discoveryCandidates = g_slist_append (subscription->discoveryCandidates, url);
+			else
+				g_free (url);
+		}
+	}
+
+	debug (DEBUG_UPDATE, "No feed link on %s, trying %u common feed addresses", page, g_slist_length (subscription->discoveryCandidates));
+	feed_parser_guess_next (subscription);
+	return TRUE;
+}
+
 /**
  * This function tries to find a feed link for a given HTTP URI. It
  * tries to download it. If it finds a valid feed source it parses
@@ -158,7 +281,9 @@ feed_parser_auto_discover (feedParserCtxtPtr ctxt)
 	}
 
 	debug (DEBUG_UPDATE, "No feed link found!");
-	return FALSE;
+
+	/* last resort: try common feed addresses (asynchronously) */
+	return feed_parser_guess_start (ctxt->subscription);
 }
 
 static void
@@ -195,6 +320,12 @@ feed_parse (feedParserCtxtPtr ctxt)
 		g_string_truncate (ctxt->subscription->parseErrors, 0);
 	else
 		ctxt->subscription->parseErrors = g_string_new (NULL);
+
+	/* page feeds: the user's selectors instead of format detection */
+	if (ctxt->subscription->scraper) {
+		feed_parser_ctxt_cleanup (ctxt);
+		return page_scraper_parse (ctxt);
+	}
 
 	/* Prepare two documents, one parse as XML and one as XHTML.
 	   Depending on the feed parser being an HTML parser the one

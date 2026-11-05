@@ -26,6 +26,8 @@
 
 #include "liferea_application.h"
 
+#include "install_import.h"
+
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
 #endif
@@ -52,6 +54,7 @@ struct _LifereaApplication {
 	AdwApplication	parent;
 	gchar		*initialStateOption;
 	gint		pluginsDisabled;
+	gint		importFromLiferea;
 
 	LifereaDBus	*dbus;
 	LifereaShell	*shell;
@@ -141,9 +144,16 @@ on_app_startup (GApplication *gapp, gpointer user_data)
 
 	debug_set_flags (app->debug_flags);
 
+	/* Taking over another Liferea's files must happen before
+	   configuration and database are opened */
+	if (app->importFromLiferea)
+		install_import_schedule ();
+	install_import_run_files ();
+
 	/* Configuration necessary for network options, so it
 	   has to be initialized before network_init() */
 	conf_init ();
+	install_import_run_settings ();
 	network_init();
 
 	/* Setup update queue handling */
@@ -264,6 +274,7 @@ liferea_application_init (LifereaApplication *self)
 		{ "version", 'v', G_OPTION_FLAG_NONE, G_OPTION_ARG_NONE, NULL, N_("Show version information and exit"), NULL },
 		{ "add-feed", 'a', 0, G_OPTION_ARG_STRING, NULL, N_("Add a new subscription"), N_("uri") },
 		{ "disable-plugins", 'p', G_OPTION_FLAG_NONE, G_OPTION_ARG_NONE, &self->pluginsDisabled, N_("Start with all plugins disabled"), NULL },
+		{ "import-from-liferea", 0, G_OPTION_FLAG_NONE, G_OPTION_ARG_NONE, &self->importFromLiferea, N_("Replace this fork's feeds, database and settings with those of the regular Liferea installation (the current ones are backed up)"), NULL },
 		{ NULL, 0, 0, 0, NULL, NULL, NULL }
 	};
 
@@ -325,12 +336,12 @@ liferea_application_new (int argc, char *argv[])
 
 	liferea_app = g_object_new (LIFEREA_APPLICATION_TYPE,
 		                    "flags", G_APPLICATION_HANDLES_OPEN,
-		                    "application-id", "net.sourceforge.liferea",
+		                    "application-id", APPLICATION_ID,
 		                    NULL);
 
-	g_set_prgname ("net.sourceforge.liferea");
-	g_set_application_name (_("Liferea"));
-	gtk_window_set_default_icon_name ("net.sourceforge.liferea");	/* GTK theme support */
+	g_set_prgname (APPLICATION_ID);
+	g_set_application_name (_("Liferea-Wonder"));
+	gtk_window_set_default_icon_name (APPLICATION_ID);	/* GTK theme support */
 	status = g_application_run (G_APPLICATION (liferea_app), argc, argv);
 	g_object_unref (liferea_app);
 

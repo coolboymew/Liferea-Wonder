@@ -62,7 +62,6 @@ and many more...</property>
     <property name="comments" translatable="yes">Liferea is a news aggregator for GTK+</property>
     <property name="documenters">Lars Windolf</property>
     <property name="license-type">gpl-2-0</property>
-    <property name="logo-icon-name">net.sourceforge.liferea</property>
     <property name="program-name">Liferea</property>
     <property name="resizable">0</property>
     <property name="title" translatable="yes">About</property>

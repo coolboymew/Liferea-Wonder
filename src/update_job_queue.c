@@ -39,6 +39,31 @@ G_DEFINE_TYPE (UpdateJobQueue, update_job_queue, G_TYPE_OBJECT)
 
 static UpdateJobQueue *queue = NULL;
 
+/* Per-host request throttle: requests to the same host are run one after
+   another and spaced by the configured delay (HOST_REQUEST_DELAY), so we
+   do not hammer servers hosting many of the user's feeds. Requests to
+   different hosts still run in parallel. */
+typedef struct hostSlot {
+	gboolean	busy;		/*<< TRUE while a request to this host is running */
+	gint64		nextAllowed;	/*<< monotonic time before which no new request may start */
+	guint		timerId;	/*<< pending dispatch timer source id (or 0) */
+	GQueue		*waiting;	/*<< jobs waiting for this host */
+} *hostSlotPtr;
+
+static GMutex		hostLock;
+static GHashTable	*hosts = NULL;	/* host name -> hostSlot */
+
+static void
+host_slot_free (gpointer data)
+{
+	hostSlotPtr slot = (hostSlotPtr)data;
+
+	if (slot->timerId)
+		g_source_remove (slot->timerId);
+	g_queue_free (slot->waiting);
+	g_free (slot);
+}
+
 typedef void (*UpdateJobFunc)(gpointer job);
 
 static void
@@ -70,6 +95,10 @@ update_job_queue_finalize (GObject *object)
 	g_slist_free (queue->jobs);
 	queue->jobs = NULL;
 	queue = NULL;
+
+	g_mutex_lock (&hostLock);
+	g_clear_pointer (&hosts, g_hash_table_destroy);
+	g_mutex_unlock (&hostLock);
 }
 
 static void
@@ -102,6 +131,169 @@ update_job_queue_init (UpdateJobQueue *self)
 	queue->normalPool	= g_thread_pool_new (update_job_queue_run, (gpointer)update_job_execute,        max_jobs, FALSE, NULL);
 	queue->priorityPool	= g_thread_pool_new (update_job_queue_run, (gpointer)update_job_execute,        max_jobs, FALSE, NULL);
 	queue->resultPool	= g_thread_pool_new (update_job_queue_run, (gpointer)update_job_process_result, max_jobs, FALSE, NULL);
+
+	g_mutex_lock (&hostLock);
+	hosts = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, host_slot_free);
+	g_mutex_unlock (&hostLock);
+}
+
+/* Returns the lower-cased host name of network requests, NULL for
+   local files and commands which are never throttled. */
+static gchar *
+update_job_queue_get_host (UpdateJob *job)
+{
+	g_autoptr(GUri)	uri = NULL;
+	const gchar	*host;
+
+	if (!job->request || !job->request->source || *(job->request->source) == '|')
+		return NULL;
+
+	uri = g_uri_parse (job->request->source, G_URI_FLAGS_PARSE_RELAXED, NULL);
+	if (!uri || g_str_equal (g_uri_get_scheme (uri), "file"))
+		return NULL;
+
+	host = g_uri_get_host (uri);
+	if (!host || !*host)
+		return NULL;
+
+	return g_ascii_strdown (host, -1);
+}
+
+/* Returns the configured per-host delay in microseconds (0 = no throttle) */
+static gint64
+update_job_queue_get_host_delay (void)
+{
+	gdouble delay = 0;
+
+	conf_get_double_value (HOST_REQUEST_DELAY, &delay);
+	return (delay > 0)?(gint64)(delay * G_USEC_PER_SEC):0;
+}
+
+static void
+update_job_queue_push (UpdateJob *job, updateFlags flags)
+{
+	if (!queue)
+		return;
+
+	if (flags & UPDATE_REQUEST_PRIORITY_HIGH)
+		g_thread_pool_push (queue->priorityPool, job, NULL);
+	else
+		g_thread_pool_push (queue->normalPool, job, NULL);
+}
+
+static gboolean update_job_queue_host_dispatch_cb (gpointer user_data);
+
+/* Arms the dispatch timer for a host with waiting jobs, hostLock must be held */
+static void
+update_job_queue_host_schedule (const gchar *host, hostSlotPtr slot)
+{
+	gint64	wait;
+
+	if (slot->busy || slot->timerId || g_queue_is_empty (slot->waiting))
+		return;
+
+	wait = slot->nextAllowed - g_get_monotonic_time ();
+	slot->timerId = g_timeout_add_full (G_PRIORITY_DEFAULT,
+	                                    (wait > 0)?(guint)((wait + 999) / 1000):0,
+	                                    update_job_queue_host_dispatch_cb,
+	                                    g_strdup (host),
+	                                    g_free);
+}
+
+static gboolean
+update_job_queue_host_dispatch_cb (gpointer user_data)
+{
+	const gchar	*host = (const gchar *)user_data;
+	UpdateJob	*job = NULL;
+	hostSlotPtr	slot;
+
+	g_mutex_lock (&hostLock);
+	slot = hosts?g_hash_table_lookup (hosts, host):NULL;
+	if (slot) {
+		slot->timerId = 0;
+		if (!slot->busy && slot->nextAllowed <= g_get_monotonic_time ()) {
+			job = g_queue_pop_head (slot->waiting);
+			if (job) {
+				slot->busy = TRUE;
+				job->throttleHost = g_strdup (host);
+			}
+		} else {
+			update_job_queue_host_schedule (host, slot);
+		}
+	}
+	g_mutex_unlock (&hostLock);
+
+	if (job) {
+		debug (DEBUG_UPDATE, "host throttle: starting delayed request %s", job->request->source);
+		update_job_queue_push (job, job->flags);
+	}
+
+	return G_SOURCE_REMOVE;
+}
+
+/* Releases the host slot held by a job and lets the next waiting job
+   for the same host start once the configured delay has passed. */
+static void
+update_job_queue_host_release (UpdateJob *job)
+{
+	hostSlotPtr	slot;
+
+	if (!job->throttleHost)
+		return;
+
+	g_mutex_lock (&hostLock);
+	slot = hosts?g_hash_table_lookup (hosts, job->throttleHost):NULL;
+	if (slot) {
+		slot->busy = FALSE;
+		slot->nextAllowed = g_get_monotonic_time () + update_job_queue_get_host_delay ();
+		update_job_queue_host_schedule (job->throttleHost, slot);
+	}
+	g_mutex_unlock (&hostLock);
+
+	g_clear_pointer (&job->throttleHost, g_free);
+}
+
+/* Either starts the job right away or parks it until its host is free */
+static void
+update_job_queue_dispatch (UpdateJob *job, updateFlags flags)
+{
+	g_autofree gchar	*host = NULL;
+	hostSlotPtr		slot;
+	gboolean		runNow = TRUE;
+
+	host = update_job_queue_get_host (job);
+	if (!host || 0 == update_job_queue_get_host_delay ()) {
+		update_job_queue_push (job, flags);
+		return;
+	}
+
+	g_mutex_lock (&hostLock);
+	if (hosts) {
+		slot = g_hash_table_lookup (hosts, host);
+		if (!slot) {
+			slot = g_new0 (struct hostSlot, 1);
+			slot->waiting = g_queue_new ();
+			g_hash_table_insert (hosts, g_strdup (host), slot);
+		}
+
+		if (slot->busy || !g_queue_is_empty (slot->waiting) || slot->nextAllowed > g_get_monotonic_time ()) {
+			/* user triggered requests go first */
+			if (flags & UPDATE_REQUEST_PRIORITY_HIGH)
+				g_queue_push_head (slot->waiting, job);
+			else
+				g_queue_push_tail (slot->waiting, job);
+			update_job_queue_host_schedule (host, slot);
+			runNow = FALSE;
+			debug (DEBUG_UPDATE, "host throttle: delaying request %s (%u waiting for %s)", job->request->source, g_queue_get_length (slot->waiting), host);
+		} else {
+			slot->busy = TRUE;
+			job->throttleHost = g_steal_pointer (&host);
+		}
+	}
+	g_mutex_unlock (&hostLock);
+
+	if (runNow)
+		update_job_queue_push (job, flags);
 }
 
 void
@@ -128,10 +320,7 @@ update_job_queue_add (gpointer data, updateFlags flags)
 
 	g_assert (job->state == JOB_STATE_PENDING);
 
-	if (flags & UPDATE_REQUEST_PRIORITY_HIGH)
-		g_thread_pool_push (queue->priorityPool, data, NULL);
-	else
-		g_thread_pool_push (queue->normalPool, data, NULL);
+	update_job_queue_dispatch (job, flags);
 }
 
 void
@@ -143,6 +332,7 @@ update_job_queue_finish (gpointer data)
 		return;
 
 	g_assert (job->state == JOB_STATE_FINISHED || job->state == JOB_STATE_FAILED);
+	update_job_queue_host_release (job);
 	g_thread_pool_push (queue->resultPool, (gpointer)job, NULL);
 }
 
@@ -164,6 +354,9 @@ update_job_cancel_by_owner (gpointer owner)
 void
 update_job_queue_remove (gpointer job)
 {
+	/* a cancelled job might still hold its host slot */
+	update_job_queue_host_release ((UpdateJob *)job);
+
 	if (!queue)
 		return;
 

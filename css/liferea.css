@@ -171,6 +171,15 @@ div.content img {
 	height: auto !important;
 }
 
+/* Keep pictures within the visible view, so a big picture never needs
+   scrolling to be seen whole; they shrink and grow with the window
+   while keeping their proportions. */
+div.content img,
+div.content video {
+	max-height: 75vh;
+	object-fit: contain;
+}
+
 svg .node polygon, svg .node path {
   transition: fill 150ms ease;
   fill: var(--box-bg);

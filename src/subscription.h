@@ -43,6 +43,21 @@ typedef enum fetchError {
 	/* when adding stuff here, extend xstl/feed.xml.in also! */
 } fetchError;
 
+/** Tray icon alert colours (see the trayicon plugin) */
+typedef enum {
+	TRAY_ALERT_NONE = 0,
+	TRAY_ALERT_BLUE,
+	TRAY_ALERT_GREEN,
+	TRAY_ALERT_RED,
+	TRAY_ALERT_YELLOW,
+	TRAY_ALERT_PURPLE,
+	TRAY_ALERT_WHITE,
+	TRAY_ALERT_COUNT
+} trayAlertColor;
+
+/* names used in feedlist.opml, indexed by trayAlertColor */
+#define TRAY_ALERT_NAMES	{ NULL, "blue", "green", "red", "yellow", "purple", "white" }
+
 /** Common structure to hold all information about a single subscription. */
 typedef struct subscription {
 	Node		*node;			/*<< the feed list node the subscription is attached to */
@@ -64,6 +79,8 @@ typedef struct subscription {
 	updateStatePtr	updateState;		/*<< update states (etag, last modified, cookies, last polling times...) */
 
 	guint		autoDiscoveryTries;	/*<< counter to break auto discovery redirect circles */
+	GSList		*discoveryCandidates;	/*<< common feed addresses still to try when discovery found no link (see feed_parser.c) */
+	gboolean	discoveryGuessed;	/*<< TRUE once common feed addresses were tried for this subscription */
 
 	gboolean	activeAuth;		/*<< TRUE if authentication in progress */
 
@@ -80,6 +97,9 @@ typedef struct subscription {
 
 	// feed-only settings
 	gchar		*filtercmd;		/*<< feed filter command */
+	gboolean	siteCheckNeeded;	/*<< the last update hit a browser check the user has to pass (page feeds) */
+	struct pageScraper *scraper;		/*<< selectors making a feed from a web page (or NULL, see parsers/page_scraper.h) */
+	gchar		*initialTitle;		/*<< name the user gave when subscribing, kept instead of the feed title (or NULL) */
 	gchar		*filterError;		/*<< textual description of filter errors */
 	gint		cacheLimit;		/**< Amount of cache to save: See the cache_limit enum */
 
@@ -88,7 +108,9 @@ typedef struct subscription {
 	gboolean	markAsRead;		/**< if TRUE downloaded items are automatically marked as read */
 	gboolean	html5Extract;		/**< if TRUE try to fetch extra content via HTML5 / Google AMP */
 	gboolean	alwaysShowInReduced;	/**< for newsbins only, if TRUE always show when using reduced feed list */
-	gboolean	loadItemLink;		/*<< if TRUE do automatically load the item link into the HTML pane */	
+	gboolean	loadItemLink;		/*<< if TRUE do automatically load the item link into the HTML pane */
+	trayAlertColor	trayAlert;		/*<< colour the tray icon takes when new items arrive (or TRAY_ALERT_NONE) */
+	gboolean	trayAlertPending;	/*<< TRUE if new items arrived since the user last viewed the feed */	
 } *subscriptionPtr;
 
 /**
@@ -186,6 +208,17 @@ gboolean subscription_can_update_now (subscriptionPtr subscription);
  * Returns: TRUE if the subscription can be updated, FALSE otherwise
  */
 gboolean subscription_can_be_updated (subscriptionPtr subscription, guint flags);
+
+/**
+ * subscription_get_scheduled_interval: (skip)
+ * @subscription:	the subscription
+ * @folder: (out) (nullable): the folder whose schedule decided (or NULL)
+ *
+ * Get the user defined schedule after applying folder schedules.
+ *
+ * Returns: -1 (global default), -2 (no auto update) or minutes
+ */
+gint subscription_get_scheduled_interval (subscriptionPtr subscription, Node **folder);
 
 /**
  * subscription_get_effective_update_interval:

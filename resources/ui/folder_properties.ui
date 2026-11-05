@@ -1,0 +1,135 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<interface>
+  <!-- interface-name folder_properties.ui -->
+  <requires lib="gtk" version="4.0"/>
+  <requires lib="libadwaita" version="1.5"/>
+  <object class="GtkAdjustment" id="folderIntervalAdjustment">
+    <property name="lower">1</property>
+    <property name="upper">1000000000</property>
+    <property name="step-increment">1</property>
+    <property name="page-increment">10</property>
+    <property name="value">1</property>
+  </object>
+  <object class="AdwDialog" id="folder_properties">
+    <property name="default-widget">applyBtn</property>
+    <property name="title" translatable="yes">Folder Properties</property>
+    <property name="width-request">480</property>
+    <child>
+      <object class="GtkBox">
+        <property name="orientation">vertical</property>
+        <child>
+          <object class="AdwHeaderBar"/>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <property name="margin-bottom">12</property>
+            <property name="margin-end">12</property>
+            <property name="margin-start">12</property>
+            <property name="margin-top">12</property>
+            <property name="orientation">vertical</property>
+            <property name="spacing">6</property>
+            <child>
+              <object class="GtkListBox">
+                <property name="css-classes">boxed-list</property>
+                <property name="margin-bottom">12</property>
+                <property name="selection-mode">none</property>
+                <child>
+                  <object class="AdwEntryRow" id="nameEntry">
+                    <property name="title" translatable="yes">Folder Name</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkLabel">
+                <property name="label" translatable="yes">Update Schedule</property>
+                <property name="xalign">0.0</property>
+                <attributes>
+                  <attribute name="weight" value="bold"/>
+                </attributes>
+              </object>
+            </child>
+            <child>
+              <object class="GtkCheckButton" id="folderIntervalDefault">
+                <property name="active">1</property>
+                <property name="label" translatable="yes">_Use the parent folder's or global default update interval.</property>
+                <property name="margin-start">12</property>
+                <property name="use-underline">1</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkBox">
+                <property name="spacing">12</property>
+                <child>
+                  <object class="GtkCheckButton" id="folderIntervalSpecific">
+                    <property name="group">folderIntervalDefault</property>
+                    <property name="label" translatable="yes">Update _every</property>
+                    <property name="margin-start">12</property>
+                    <property name="use-underline">1</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkSpinButton" id="folderIntervalSpinButton">
+                    <property name="adjustment">folderIntervalAdjustment</property>
+                    <property name="climb-rate">1</property>
+                    <property name="focusable">1</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkDropDown" id="folderIntervalUnit"/>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkCheckButton" id="folderIntervalNever">
+                <property name="group">folderIntervalDefault</property>
+                <property name="label" translatable="yes">_Don't update feeds in this folder automatically.</property>
+                <property name="margin-start">12</property>
+                <property name="use-underline">1</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkCheckButton" id="folderOverrideCheck">
+                <property name="label" translatable="yes">_Override the schedules of the feeds inside</property>
+                <property name="margin-top">6</property>
+                <property name="use-underline">1</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="folderScheduleInfo">
+                <property name="halign">start</property>
+                <property name="margin-start">12</property>
+                <property name="max-width-chars">55</property>
+                <property name="wrap">1</property>
+                <property name="xalign">0.0</property>
+                <property name="css-classes">dim-label</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkBox">
+                <property name="halign">end</property>
+                <property name="margin-top">12</property>
+                <property name="spacing">6</property>
+                <child>
+                  <object class="GtkButton" id="cancelBtn">
+                    <property name="focusable">1</property>
+                    <property name="label" translatable="yes">_Cancel</property>
+                    <property name="use-underline">1</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton" id="applyBtn">
+                    <property name="css-classes">suggested-action</property>
+                    <property name="focusable">1</property>
+                    <property name="label" translatable="yes">_OK</property>
+                    <property name="use-underline">1</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>
