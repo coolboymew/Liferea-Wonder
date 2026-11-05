@@ -18,6 +18,7 @@ similar to a desktop mail/news client, with an embedded web browser.
 - **Folder update schedules:** a folder can have its own update interval for all its feeds; a feed can still override it.
 - **Feeds from web pages:** turn any shop or list page into a feed by saying what an item, its title, link, picture and text are. With automatic detection, a live preview, first-seen dates for items, and kept cookies for sites with a language or age check.
 - **Built-in browser loading for those pages:** pages built by JavaScript work; pass a site check once in a window ("Pass Site Check..."); *Open Page* with *Detect Items Here* and *Pick an Item*; optional scrolling for a number of seconds, for lists that load more as you scroll.
+- **Prices for web page feeds:** give a *Price* selector (or let *Detect* / *Pick an Item* find it) and the item list shows a price column. When an item's price changes, its entry is updated: new price, a "Price changes" history in its text, the date of the change, and it is unread again (so tray colours and phone messages fire too).
 - **Better feed discovery:** finds feeds that sites only link as ordinary links, then tries common feed addresses.
 - **Name box in New Feed:** filled in automatically and kept after the first update.
 - **RSS categories** are read (upstream drops them).
@@ -30,6 +31,7 @@ similar to a desktop mail/news client, with an embedded web browser.
 **Tray icon** (with the *Tray Icon* plugin)
 
 - **Colour alerts:** give a feed one of six colours; when it has new items the tray icon takes that colour, fading between colours when several are on, until you read one of the feed's items. They come on at once when you choose a colour for a feed with unread items, and survive restarts.
+- **Phone messages (KDE Connect):** per feed, *Send a message to my phone when new items arrive* (feed Properties, *Advanced*) pings every paired phone KDE Connect can reach; feeds updating at the same time share one message.
 - **Close to tray:** closing the window hides it while the tray icon is shown; starting Liferea-Wonder again (e.g. a pinned launcher) brings the same window back.
 - **Clicks:** left click shows the window or brings it to the front, right click opens the menu.
 - **Reliable icon:** uses the application icon, which every icon theme has, and appears even when Liferea-Wonder starts before the panel.
@@ -75,17 +77,27 @@ Get the source:
 
 **Without packaging**, into `/usr/local`:
 
-    meson setup build --prefix=/usr/local
-    meson compile -C build
-    meson test -C build
-    sudo meson install -C build
-    sudo ninja -C build uninstall     # uninstall
+    meson setup build-system --prefix=/usr/local
+    meson compile -C build-system
+    meson test -C build-system
+    sudo meson install -C build-system
+    sudo ninja -C build-system uninstall     # uninstall
 
-or just for your user, into `~/.local` (no sudo; `~/.local/bin` must be in
-your `PATH`):
+or just for your user, into `~/.local` (no sudo):
 
-    meson setup build --prefix=$HOME/.local
-    meson compile -C build && meson install -C build
+    meson setup build-user --prefix=$HOME/.local
+    meson compile -C build-user
+    meson install -C build-user
+    ninja -C build-user uninstall            # uninstall
+
+Each way uses its own build folder (`build-system`, `build-user`); to
+start over, delete that folder. For the `~/.local` way, `~/.local/bin`
+must be in your command path; in fish run `fish_add_path ~/.local/bin`
+once, in bash or zsh add `export PATH="$HOME/.local/bin:$PATH"` to
+`~/.bashrc` or `~/.zshrc`. Install only one of the three ways at a time:
+with the package installed too, `liferea-wonder` may start the package's
+copy, and a running Liferea-Wonder is only brought to the front, not
+started again (quit it first from its tray menu or with Ctrl+Q).
 
 Then start **Liferea-Wonder** from the application menu, or run
 `liferea-wonder`. To show the tray icon, enable the *Tray Icon* plugin in
@@ -235,6 +247,26 @@ schema `io.github.coolboymew.LifereaWonder`, and the folders listed above.
   restart (stored as `trayAlertPending`). A quiet alternative to pop-ups for
   people who keep notifications off. Stored as `trayAlert` on the feed's
   outline in `feedlist.opml`.
+- **Prices in web page feeds.** The page feed dialog has a *Price*
+  selector (stored as `scrapePrice`); *Detect* and *Pick an Item* look for
+  a class with "price" or "cost". The price is kept with each entry
+  (`price`) and shown right-aligned in the item list, like a column. Items
+  are recognised by their link: when a known item comes with another
+  price, its entry gets the new price, a history line per change (stored
+  as `priceHistory`, shown under "Price changes:" newest first), the time
+  of the change as its date, and it becomes unread again. Price changes
+  count like new items for tray alerts, notifications and phone messages.
+  Adding a price selector to an existing feed stores the prices of its
+  known entries quietly (still read, same date); changes after that are
+  news. Texts of neighbouring elements are separated by a space, so a
+  sale price and the crossed out old one read "3,542 JPY 5,060".
+- **Phone messages via KDE Connect.** Feed Properties → *Advanced* →
+  *Send a message to my phone (KDE Connect) when new items arrive*
+  (stored as `kdeConnect`). After an update with new or price-changed
+  items, Liferea-Wonder waits 5 seconds for other feeds, then sends one
+  ping message ("Liferea-Wonder: new items in Feed (2), Other feed (1)")
+  over D-Bus to every paired, reachable device. Nothing happens without
+  KDE Connect or a reachable phone.
 - **Tray icon fixes.** The tray icon uses the application icon (the themed
   "emblem-web" is missing from icon themes like Breeze, the icon then did
   not show at all) and still appears when Liferea starts before the panel's

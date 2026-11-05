@@ -719,6 +719,7 @@ subscription_import (xmlNodePtr xml, gboolean trusted)
 		subscription->scraper->link = (gchar *)xmlGetProp (xml, BAD_CAST"scrapeLink");
 		subscription->scraper->image = (gchar *)xmlGetProp (xml, BAD_CAST"scrapeImage");
 		subscription->scraper->text = (gchar *)xmlGetProp (xml, BAD_CAST"scrapeText");
+		subscription->scraper->price = (gchar *)xmlGetProp (xml, BAD_CAST"scrapePrice");
 	}
 	xmlFree (tmp);
 
@@ -750,6 +751,11 @@ subscription_import (xmlNodePtr xml, gboolean trusted)
 	tmp = xmlGetProp (xml, BAD_CAST"trayAlertPending");
 	if (tmp && !xmlStrcmp (tmp, BAD_CAST"true") && subscription->trayAlert != TRAY_ALERT_NONE)
 		subscription->trayAlertPending = TRUE;
+	xmlFree (tmp);
+
+	tmp = xmlGetProp (xml, BAD_CAST"kdeConnect");
+	if (tmp && !xmlStrcmp (tmp, BAD_CAST"true"))
+		subscription->kdeConnect = TRUE;
 	xmlFree (tmp);
 
 	tmp = xmlGetProp (xml, BAD_CAST"alwaysShowInReducedMode");
@@ -794,8 +800,8 @@ subscription_export (subscriptionPtr subscription, xmlNodePtr xml, gboolean trus
 	/* page feed selectors, also in exports so they can be shared */
 	if (subscription->scraper) {
 		pageScraperPtr s = subscription->scraper;
-		const gchar *attrs[] = { "scrapeItem", "scrapeTitle", "scrapeLink", "scrapeImage", "scrapeText" };
-		const gchar *values[] = { s->item, s->title, s->link, s->image, s->text };
+		const gchar *attrs[] = { "scrapeItem", "scrapeTitle", "scrapeLink", "scrapeImage", "scrapeText", "scrapePrice" };
+		const gchar *values[] = { s->item, s->title, s->link, s->image, s->text, s->price };
 
 		for (guint i = 0; i < G_N_ELEMENTS (attrs); i++)
 			if (values[i] && *values[i])
@@ -829,6 +835,9 @@ subscription_export (subscriptionPtr subscription, xmlNodePtr xml, gboolean trus
 
 		if (subscription->alwaysShowInReduced)
 			xmlNewProp (xml, BAD_CAST"alwaysShowInReducedMode", BAD_CAST"true");
+
+		if (subscription->kdeConnect)
+			xmlNewProp (xml, BAD_CAST"kdeConnect", BAD_CAST"true");
 
 		if (subscription->trayAlert != TRAY_ALERT_NONE) {
 			const gchar *names[] = TRAY_ALERT_NAMES;

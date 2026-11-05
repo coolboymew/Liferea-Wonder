@@ -18,6 +18,7 @@ liferea_sources = files(
   'feedlist.c',
   'html.c',
   'install_import.c',
+  'kdeconnect.c',
   'item.c',
   'item_history.c',
   'item_loader.c',

@@ -549,7 +549,8 @@ static const gchar *pickScript =
 	"  e.preventDefault (); e.stopPropagation ();"
 	"  var b = block (e.target); if (!b) return;"
 	"  var result = { item: b.sel, title: inner (b.el, ['title', 'name', 'heading']) || 'a',"
-	"                 text: inner (b.el, ['price', 'cost', 'date']), image: b.el.querySelector ('img') ? 'img' : '' };"
+	"                 text: inner (b.el, ['date', 'summary', 'desc']), price: inner (b.el, ['price', 'cost']),"
+	"                 image: b.el.querySelector ('img') ? 'img' : '' };"
 	"  stop (); window.webkit.messageHandlers.lifereaPick.postMessage (JSON.stringify (result)); }"
 	" function key (e) { if (e.key === 'Escape') { stop (); window.webkit.messageHandlers.lifereaPick.postMessage ('cancel'); } }"
 	" document.addEventListener ('mouseover', over, true);"
@@ -583,7 +584,8 @@ page_window_pick_snapshot_cb (GObject *object, GAsyncResult *res, gpointer user_
 		              json_object_get_string_member_with_default (obj, "item", NULL),
 		              json_object_get_string_member_with_default (obj, "title", NULL),
 		              json_object_get_string_member_with_default (obj, "image", NULL),
-		              json_object_get_string_member_with_default (obj, "text", NULL));
+		              json_object_get_string_member_with_default (obj, "text", NULL),
+		              json_object_get_string_member_with_default (obj, "price", NULL));
 	}
 
 	g_free (pick->json);

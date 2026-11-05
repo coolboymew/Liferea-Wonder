@@ -216,15 +216,31 @@
                     </child>
                     <child>
                       <object class="GtkEntry" id="textEntry">
-                        <property name="placeholder-text" translatable="yes">none (e.g. .price)</property>
+                        <property name="placeholder-text" translatable="yes">none (e.g. .date)</property>
                         <layout><property name="column">1</property><property name="row">4</property></layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="label" translatable="yes">P_rice:</property>
+                        <property name="mnemonic-widget">priceEntry</property>
+                        <property name="use-underline">1</property>
+                        <property name="xalign">0.0</property>
+                        <layout><property name="column">0</property><property name="row">5</property></layout>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkEntry" id="priceEntry">
+                        <property name="placeholder-text" translatable="yes">none (e.g. .price)</property>
+                        <property name="tooltip-text" translatable="yes">Shown in the item list; when an item's price changes, its entry is updated, marked unread and lists the old prices</property>
+                        <layout><property name="column">1</property><property name="row">5</property></layout>
                       </object>
                     </child>
                   </object>
                 </child>
                 <child>
                   <object class="GtkLabel">
-                    <property name="label" translatable="yes">Selectors: tag, .class, #id, [attribute] or [attribute=value], combined like div.item[data-id] and nested with spaces (.title a) or &gt;. Title, link, picture and extra text are looked for inside each item block. XPath works too when starting with / or ./</property>
+                    <property name="label" translatable="yes">Selectors: tag, .class, #id, [attribute] or [attribute=value], combined like div.item[data-id] and nested with spaces (.title a) or &gt;. Title, link, picture, extra text and price are looked for inside each item block. XPath works too when starting with / or ./</property>
                     <property name="max-width-chars">60</property>
                     <property name="wrap">1</property>
                     <property name="xalign">0.0</property>

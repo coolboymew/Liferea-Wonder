@@ -38,6 +38,7 @@
 #include "item.h"
 #include "itemlist.h"
 #include "item_state.h"
+#include "metadata.h"
 #include "node_providers/newsbin.h"
 #include "social.h"
 #include "xml.h"
@@ -194,6 +195,8 @@ item_list_view_render_row (ItemListView *ilv, GtkWidget *box, itemPtr item, Node
 	GtkWidget *headline_label = g_object_get_data (G_OBJECT (box), "headline_label");
 	GtkWidget *preview_label = g_object_get_data (G_OBJECT (box), "preview_label");
 	GtkWidget *date_label = g_object_get_data (G_OBJECT (box), "date_label");
+	GtkWidget *price_label = g_object_get_data (G_OBJECT (box), "price_label");
+	const gchar *price = metadata_list_get (item->metadata, "price");
 	Node *selected = feedlist_get_selected ();
 	gchar *plain_title;
 	gchar *escaped_title;
@@ -267,6 +270,10 @@ item_list_view_render_row (ItemListView *ilv, GtkWidget *box, itemPtr item, Node
 	gtk_label_set_xalign (GTK_LABEL (headline_label), item_list_title_alignment (plain_title));
 	gtk_label_set_xalign (GTK_LABEL (preview_label), item_list_title_alignment (plain_title));
 	gtk_label_set_text (GTK_LABEL (date_label), time_str);
+
+	/* page feeds with a price selector: a price column */
+	gtk_label_set_text (GTK_LABEL (price_label), price ? price : "");
+	gtk_widget_set_visible (price_label, price != NULL);
 
 	if (state_icon)
 		gtk_image_set_from_gicon (GTK_IMAGE (state_image), (GIcon *)state_icon);
@@ -1035,6 +1042,7 @@ item_list_view_factory_setup_cb (GtkListItemFactory *factory, GtkListItem *list_
 	GtkWidget *headline_label = gtk_label_new (NULL);
 	GtkWidget *preview_label = gtk_label_new (NULL);
 	GtkWidget *date_label = gtk_label_new (NULL);
+	GtkWidget *price_label = gtk_label_new (NULL);
 
 	gtk_label_set_use_markup (GTK_LABEL (headline_label), TRUE);
 	gtk_label_set_xalign (GTK_LABEL (headline_label), 0.0);
@@ -1053,12 +1061,21 @@ item_list_view_factory_setup_cb (GtkListItemFactory *factory, GtkListItem *list_
 	gtk_widget_set_hexpand (date_label, FALSE);
 	gtk_widget_add_css_class (date_label, "dim-label");
 
+	/* fixed width and right aligned, so prices line up like a column */
+	gtk_label_set_xalign (GTK_LABEL (price_label), 1.0);
+	gtk_label_set_width_chars (GTK_LABEL (price_label), 12);
+	gtk_label_set_ellipsize (GTK_LABEL (price_label), PANGO_ELLIPSIZE_START);
+	gtk_widget_set_hexpand (price_label, FALSE);
+	gtk_widget_add_css_class (price_label, "numeric");
+	gtk_widget_set_visible (price_label, FALSE);
+
 	gtk_widget_set_halign (state_image, GTK_ALIGN_START);
 	gtk_widget_set_halign (favicon_image, GTK_ALIGN_START);
 	gtk_widget_set_hexpand (headline_label, TRUE);
 	gtk_widget_set_hexpand (preview_label, TRUE);
 
 	gtk_box_append (GTK_BOX (header_box), headline_label);
+	gtk_box_append (GTK_BOX (header_box), price_label);
 	gtk_box_append (GTK_BOX (header_box), date_label);
 	gtk_box_append (GTK_BOX (text_box), header_box);
 	gtk_box_append (GTK_BOX (text_box), preview_label);
@@ -1075,6 +1092,7 @@ item_list_view_factory_setup_cb (GtkListItemFactory *factory, GtkListItem *list_
 	g_object_set_data (G_OBJECT (box), "headline_label", headline_label);
 	g_object_set_data (G_OBJECT (box), "preview_label", preview_label);
 	g_object_set_data (G_OBJECT (box), "date_label", date_label);
+	g_object_set_data (G_OBJECT (box), "price_label", price_label);
 
 	gtk_list_item_set_child (list_item, box);
 }

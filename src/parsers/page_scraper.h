@@ -31,7 +31,9 @@
      title  inside an item, its text is the item title, e.g. ".title a"
      link   inside an item, its href (default: first link in the title or item)
      image  inside an item, its src (optional)
-     text   inside an item, text shown below the picture, e.g. ".price"
+     text   inside an item, text shown below the picture, e.g. ".date"
+     price  inside an item, its price (optional): shown in the item list,
+            a changed price updates the entry (see itemset.c)
 
    Each item's link is its GUID, so only items not seen before are new. */
 
@@ -41,6 +43,7 @@ typedef struct pageScraper {
 	gchar	*link;
 	gchar	*image;
 	gchar	*text;
+	gchar	*price;
 } *pageScraperPtr;
 
 #define PAGE_SCRAPER_TYPE	"pagescraper"

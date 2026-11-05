@@ -223,6 +223,7 @@ on_dialog_response (GtkButton *btn, gpointer user_data)
 		subscription->ignoreComments  = gtk_check_button_get_active (GTK_CHECK_BUTTON (liferea_dialog_lookup (dialog, "ignoreCommentFeeds")));
 		subscription->markAsRead      = gtk_check_button_get_active (GTK_CHECK_BUTTON (liferea_dialog_lookup (dialog, "markAsReadCheck")));
 		subscription->html5Extract    = gtk_check_button_get_active (GTK_CHECK_BUTTON (liferea_dialog_lookup (dialog, "html5ExtractCheck")));
+		subscription->kdeConnect      = gtk_check_button_get_active (GTK_CHECK_BUTTON (liferea_dialog_lookup (dialog, "kdeConnectCheck")));
 		{
 			trayAlertColor oldAlert = subscription->trayAlert;
 
@@ -539,6 +540,7 @@ subscription_prop_dialog_load (GtkWidget *dialog,
 	gtk_check_button_set_active (GTK_CHECK_BUTTON (liferea_dialog_lookup (dialog, "ignoreCommentFeeds")), subscription->ignoreComments);
 	gtk_check_button_set_active (GTK_CHECK_BUTTON (liferea_dialog_lookup (dialog, "markAsReadCheck")), subscription->markAsRead);
 	gtk_check_button_set_active (GTK_CHECK_BUTTON (liferea_dialog_lookup (dialog, "html5ExtractCheck")), subscription->html5Extract);
+	gtk_check_button_set_active (GTK_CHECK_BUTTON (liferea_dialog_lookup (dialog, "kdeConnectCheck")), subscription->kdeConnect);
 	{
 		const gchar *colors[] = { N_("None"), N_("Blue"), N_("Green"), N_("Red"), N_("Yellow"), N_("Purple"), N_("White"), NULL };
 		g_autoptr(GtkStringList) list = gtk_string_list_new (NULL);

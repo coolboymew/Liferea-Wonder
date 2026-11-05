@@ -56,7 +56,8 @@ typedef void (*PageBrowserPageFunc) (gpointer user_data, const gchar *uri, const
 
 /* gets the page and the selectors of an item the user picked on it */
 typedef void (*PageBrowserPickFunc) (gpointer user_data, const gchar *uri, const gchar *html,
-                                     const gchar *item, const gchar *title, const gchar *image, const gchar *text);
+                                     const gchar *item, const gchar *title, const gchar *image, const gchar *text,
+                                     const gchar *price);
 
 /**
  * page_browser_open_window: (skip)

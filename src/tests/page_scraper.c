@@ -23,6 +23,7 @@
 
 #include "debug.h"
 #include "item.h"
+#include "metadata.h"
 #include "parsers/page_scraper.h"
 
 /* a made-up shop result page: a menu block sharing the item class,
@@ -92,6 +93,7 @@ tc_extract (void)
 	scraper->title = g_strdup (".title");
 	scraper->image = g_strdup ("img");
 	scraper->text = g_strdup (".price");
+	scraper->price = g_strdup (".price p");
 
 	items = page_scraper_extract (scraper, shopPage, strlen (shopPage), "https://shop.example/search?q=x", &pageTitle, &error);
 	g_assert_no_error (error);
@@ -111,6 +113,26 @@ tc_extract (void)
 	g_assert_true (item->validGuid);
 	g_assert_nonnull (strstr (item_get_description (item), "https://shop.example/img/1.jpg"));
 	g_assert_nonnull (strstr (item_get_description (item), "2,000 yen"));
+	g_assert_cmpstr (metadata_list_get (item->metadata, "price"), ==, "2,000 yen");
+
+	/* texts of neighbouring elements get a space (sale and old price) */
+	{
+		const gchar	*page = "<html><body><div class=\"p\"><a class=\"n\" href=\"/x\">Name</a>"
+		                        "<span class=\"price\"><b>3,542 JPY</b><s>5,060</s>!</span></div>"
+		                        "<div class=\"p\"><a class=\"n\" href=\"/y\">Other</a></div></body></html>";
+		pageScraperPtr	s2 = page_scraper_new ();
+		GList		*l;
+
+		s2->item = g_strdup ("div.p");
+		s2->title = g_strdup (".n");
+		s2->price = g_strdup (".price");
+		l = page_scraper_extract (s2, page, strlen (page), "https://shop.example/", NULL, &error);
+		g_assert_no_error (error);
+		g_assert_cmpstr (metadata_list_get (((itemPtr)l->data)->metadata, "price"), ==, "3,542 JPY 5,060!");
+		g_assert_null (metadata_list_get (((itemPtr)l->next->data)->metadata, "price"));
+		g_list_free_full (l, g_object_unref);
+		page_scraper_free (s2);
+	}
 
 	/* lazy loaded picture */
 	item = (itemPtr)items->next->data;
@@ -133,7 +155,7 @@ tc_detect (void)
 	/* the id attribute keeps the menu block out */
 	g_assert_cmpstr (scraper->item, ==, "div.block[data-itemidx]");
 	g_assert_cmpstr (scraper->title, ==, ".title");
-	g_assert_cmpstr (scraper->text, ==, ".price");
+	g_assert_cmpstr (scraper->price, ==, ".price");
 
 	items = page_scraper_extract (scraper, shopPage, strlen (shopPage), "https://shop.example/", NULL, NULL);
 	g_assert_cmpuint (g_list_length (items), ==, 3);

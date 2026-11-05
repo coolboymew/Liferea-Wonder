@@ -72,6 +72,8 @@ metadata_init (void)
 	metadata_type_register ("feedTitle",		METADATA_TYPE_HTML);
 	metadata_type_register ("description",		METADATA_TYPE_HTML);
 	metadata_type_register ("richContent",		METADATA_TYPE_HTML5);
+	metadata_type_register ("price",		METADATA_TYPE_TEXT);	/* page feeds: current price */
+	metadata_type_register ("priceHistory",		METADATA_TYPE_TEXT);	/* page feeds: "<date>\t<old price>\t<new price>" per change */
 
 	/* types for aggregation NS */
 	metadata_type_register ("agSource",		METADATA_TYPE_URL);

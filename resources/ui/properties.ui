@@ -473,6 +473,13 @@
                       </object>
                     </child>
                     <child>
+                      <object class="GtkCheckButton" id="kdeConnectCheck">
+                        <property name="label" translatable="yes">Send a message to my _phone (KDE Connect) when new items arrive</property>
+                        <property name="tooltip-text" translatable="yes">Pings every paired phone that KDE Connect can reach. Feeds updating at the same time share one message. Changed prices of web page feeds count as new items.</property>
+                        <property name="use-underline">1</property>
+                      </object>
+                    </child>
+                    <child>
                       <object class="GtkLabel" id="trayAlertInfo">
                         <property name="halign">start</property>
                         <property name="max-width-chars">50</property>

@@ -26,6 +26,7 @@
 #include "common.h"
 #include "debug.h"
 #include "item.h"
+#include "metadata.h"
 #include "xml.h"
 
 pageScraperPtr
@@ -44,6 +45,7 @@ page_scraper_copy (pageScraperPtr scraper)
 	copy->link = g_strdup (scraper->link);
 	copy->image = g_strdup (scraper->image);
 	copy->text = g_strdup (scraper->text);
+	copy->price = g_strdup (scraper->price);
 
 	return copy;
 }
@@ -59,6 +61,7 @@ page_scraper_free (pageScraperPtr scraper)
 	g_free (scraper->link);
 	g_free (scraper->image);
 	g_free (scraper->text);
+	g_free (scraper->price);
 	g_free (scraper);
 }
 
@@ -225,23 +228,49 @@ page_scraper_find (xmlXPathContextPtr xctx, xmlNodePtr context, const gchar *xpa
 	return nodes;
 }
 
+/* All text below a node, the texts of different elements separated by a
+   space: shops put e.g. the sale and the crossed out price in neighbouring
+   elements ("3,542 JPY" "5,060"), which would otherwise run together */
+static void
+page_scraper_collect_text (xmlNodePtr node, GString *raw)
+{
+	for (xmlNodePtr child = node->children; child; child = child->next) {
+		if (child->type == XML_TEXT_NODE || child->type == XML_CDATA_SECTION_NODE) {
+			g_string_append (raw, (const gchar *)child->content);
+		} else if (child->type == XML_ELEMENT_NODE &&
+		           xmlStrcasecmp (child->name, BAD_CAST "script") && xmlStrcasecmp (child->name, BAD_CAST "style")) {
+			g_string_append_c (raw, ' ');
+			page_scraper_collect_text (child, raw);
+			g_string_append_c (raw, ' ');
+		}
+	}
+}
+
 /* The text of an element with whitespace collapsed (or NULL if empty) */
 static gchar *
 page_scraper_text (xmlNodePtr node)
 {
-	g_autofree gchar	*raw = (gchar *)xmlNodeGetContent (node);
+	g_autoptr(GString)	raw = g_string_new (NULL);
 	g_auto(GStrv)		words = NULL;
 	GString			*text = g_string_new (NULL);
 
-	if (raw) {
-		words = g_strsplit_set (raw, " \t\r\n\xc2\xa0", -1);
-		for (guint i = 0; words[i]; i++) {
-			if (!*words[i])
-				continue;
-			if (text->len)
-				g_string_append_c (text, ' ');
-			g_string_append (text, words[i]);
-		}
+	if (node->type == XML_ELEMENT_NODE || node->type == XML_DOCUMENT_NODE || node->type == XML_HTML_DOCUMENT_NODE) {
+		page_scraper_collect_text (node, raw);
+	} else {
+		/* attributes, text nodes (XPath matches) */
+		g_autofree gchar *content = (gchar *)xmlNodeGetContent (node);
+		if (content)
+			g_string_append (raw, content);
+	}
+
+	words = g_strsplit_set (raw->str, " \t\r\n\xc2\xa0", -1);
+	for (guint i = 0; words[i]; i++) {
+		if (!*words[i])
+			continue;
+		/* no space before punctuation that followed an element ("<b>sale</b>!") */
+		if (text->len && !strchr (",.!?;:)]", words[i][0]))
+			g_string_append_c (text, ' ');
+		g_string_append (text, words[i]);
 	}
 
 	if (!text->len) {
@@ -343,7 +372,7 @@ page_scraper_extract (pageScraperPtr scraper, const gchar *data, gsize size, con
 	itemNodes = page_scraper_find (xctx, xmlDocGetRootElement (doc), itemXPath);
 	for (iter = itemNodes; iter; iter = g_slist_next (iter)) {
 		xmlNodePtr		node = (xmlNodePtr)iter->data, match;
-		g_autofree gchar	*title = NULL, *link = NULL, *image = NULL, *text = NULL, *href = NULL, *src = NULL;
+		g_autofree gchar	*title = NULL, *link = NULL, *image = NULL, *text = NULL, *price = NULL, *href = NULL, *src = NULL;
 		GString			*description;
 		itemPtr			item;
 
@@ -383,6 +412,12 @@ page_scraper_extract (pageScraperPtr scraper, const gchar *data, gsize size, con
 				text = page_scraper_text (textNode);
 		}
 
+		if (scraper->price && *scraper->price) {
+			xmlNodePtr priceNode = page_scraper_first (xctx, node, scraper->price, error);
+			if (priceNode)
+				price = page_scraper_text (priceNode);
+		}
+
 		/* the same item may be listed twice (e.g. picture and title links) */
 		if (link) {
 			if (g_hash_table_contains (seen, link))
@@ -415,6 +450,11 @@ page_scraper_extract (pageScraperPtr scraper, const gchar *data, gsize size, con
 		if (text) {
 			g_autofree gchar *escaped = g_markup_escape_text (text, -1);
 			g_string_append_printf (description, "<p>%s</p>", escaped);
+		}
+		if (price) {
+			g_autofree gchar *escaped = g_markup_escape_text (price, -1);
+			g_string_append_printf (description, "<p class=\"price\">%s %s</p>", _("Price:"), escaped);
+			metadata_list_set (&item->metadata, "price", price);
 		}
 		if (description->len)
 			item_set_description (item, description->str);
@@ -557,7 +597,8 @@ page_scraper_detect (const gchar *data, gsize size)
 	candidate		*best = NULL;
 	pageScraperPtr		scraper = NULL;
 	const gchar		*titleWords[] = { "title", "name", "heading", NULL };
-	const gchar		*textWords[] = { "price", "cost", "date", "summary", "desc", NULL };
+	const gchar		*textWords[] = { "date", "summary", "desc", NULL };
+	const gchar		*priceWords[] = { "price", "cost", NULL };
 
 	if (!doc)
 		return NULL;
@@ -614,7 +655,9 @@ page_scraper_detect (const gchar *data, gsize size)
 			scraper->title = g_strdup ("a");
 		scraper->image = g_strdup ("img");
 		scraper->text = page_scraper_find_class (best->first, textWords);
-		debug (DEBUG_PARSING, "page scraper detected item=%s title=%s text=%s", scraper->item, scraper->title, scraper->text?scraper->text:"");
+		scraper->price = page_scraper_find_class (best->first, priceWords);
+		debug (DEBUG_PARSING, "page scraper detected item=%s title=%s text=%s price=%s", scraper->item, scraper->title,
+		       scraper->text?scraper->text:"", scraper->price?scraper->price:"");
 	}
 
 	g_hash_table_destroy (candidates);

@@ -90,6 +90,7 @@ page_feed_get_scraper (GtkWidget *dialog)
 	scraper->link = page_feed_entry_dup (dialog, "linkEntry");
 	scraper->image = page_feed_entry_dup (dialog, "imageEntry");
 	scraper->text = page_feed_entry_dup (dialog, "textEntry");
+	scraper->price = page_feed_entry_dup (dialog, "priceEntry");
 
 	return scraper;
 }
@@ -219,6 +220,7 @@ page_feed_fetch_cb (UpdateJob *job)
 		page_feed_set_entry (dialog, "linkEntry", scraper->link);
 		page_feed_set_entry (dialog, "imageEntry", scraper->image);
 		page_feed_set_entry (dialog, "textEntry", scraper->text);
+		page_feed_set_entry (dialog, "priceEntry", scraper->price);
 		page_scraper_free (scraper);
 	}
 
@@ -295,6 +297,7 @@ page_feed_use_page (GtkWidget *dialog, const gchar *uri, const gchar *html, gboo
 		page_feed_set_entry (dialog, "linkEntry", scraper->link);
 		page_feed_set_entry (dialog, "imageEntry", scraper->image);
 		page_feed_set_entry (dialog, "textEntry", scraper->text);
+		page_feed_set_entry (dialog, "priceEntry", scraper->price);
 		page_scraper_free (scraper);
 	}
 	page_feed_preview (dialog);
@@ -331,7 +334,8 @@ on_open_page_detect (gpointer data, const gchar *uri, const gchar *html)
 /* "Pick an Item" in the browser window: the user's choice of item */
 static void
 on_open_page_pick (gpointer data, const gchar *uri, const gchar *html,
-                   const gchar *item, const gchar *title, const gchar *image, const gchar *text)
+                   const gchar *item, const gchar *title, const gchar *image, const gchar *text,
+                   const gchar *price)
 {
 	GtkWidget *dialog = GTK_WIDGET (data);
 
@@ -345,6 +349,7 @@ on_open_page_pick (gpointer data, const gchar *uri, const gchar *html,
 	page_feed_set_entry (dialog, "linkEntry", NULL);
 	page_feed_set_entry (dialog, "imageEntry", image);
 	page_feed_set_entry (dialog, "textEntry", text);
+	page_feed_set_entry (dialog, "priceEntry", price);
 	page_feed_use_page (dialog, uri, html, FALSE);
 }
 
@@ -503,6 +508,7 @@ page_feed_dialog_edit (subscriptionPtr subscription)
 	page_feed_set_entry (dialog, "linkEntry", scraper->link);
 	page_feed_set_entry (dialog, "imageEntry", scraper->image);
 	page_feed_set_entry (dialog, "textEntry", scraper->text);
+	page_feed_set_entry (dialog, "priceEntry", scraper->price);
 	gtk_check_button_set_active (GTK_CHECK_BUTTON (liferea_dialog_lookup (dialog, "keepCookiesCheck")), subscription->updateOptions->keepCookies);
 	gtk_check_button_set_active (GTK_CHECK_BUTTON (liferea_dialog_lookup (dialog, "useBrowserCheck")), subscription->updateOptions->useBrowser);
 	gtk_spin_button_set_value (GTK_SPIN_BUTTON (liferea_dialog_lookup (dialog, "scrollSpin")), subscription->updateOptions->scrollSeconds);

@@ -31,6 +31,7 @@
 #include "feedlist.h"
 #include "html.h"
 #include "itemlist.h"
+#include "kdeconnect.h"
 #include "node.h"
 #include "update.h"
 #include "xml.h"
@@ -100,6 +101,8 @@ feed_process_update_result (subscriptionPtr subscription, const UpdateResult * c
 		node->newCount = itemset_merge_items (itemSet, ctxt->items, ctxt->subscription->valid, ctxt->subscription->markAsRead);
 		if (node->newCount && ctxt->subscription->trayAlert != TRAY_ALERT_NONE)
 			ctxt->subscription->trayAlertPending = TRUE;
+		if (node->newCount && ctxt->subscription->kdeConnect)
+			kdeconnect_notify_new_items (node_get_title (node), node->newCount);
 		if (node->newCount)
 			itemlist_merge_itemset (itemSet);
 		itemset_free (itemSet);

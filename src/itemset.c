@@ -23,6 +23,7 @@
 
 #include "common.h"
 #include "conf.h"
+#include "date.h"
 #include "db.h"
 #include "debug.h"
 #include "download.h"
@@ -77,12 +78,55 @@ itemset_get_max_item_count (itemSetPtr itemSet)
  *
  * Returns: TRUE if merging instead of updating is necessary)
  */
+/* Page feeds: a known item listed with another price. The entry gets the
+   new price, a history line per change (also shown in its text), the time
+   of the change and is unread again, like a new item. */
+static void
+itemset_merge_price_change (itemPtr oldItem, itemPtr newItem)
+{
+	const gchar	*oldPrice = metadata_list_get (oldItem->metadata, "price");
+	const gchar	*newPrice = metadata_list_get (newItem->metadata, "price");
+	gint64		now = g_get_real_time () / G_USEC_PER_SEC;
+	g_autofree gchar *day = date_format ((time_t)now, "%Y-%m-%d");
+	g_autofree gchar *change = g_strdup_printf ("%s\t%s\t%s", day, oldPrice, newPrice);
+	GSList		*history = metadata_list_get_values (oldItem->metadata, "priceHistory");
+	GString		*text = g_string_new (newItem->description?newItem->description:"");
+
+	/* the new item's metadata replaces the old one below: carry the history over */
+	for (GSList *iter = history; iter; iter = g_slist_next (iter))
+		newItem->metadata = metadata_list_append (newItem->metadata, "priceHistory", (const gchar *)iter->data);
+	newItem->metadata = metadata_list_append (newItem->metadata, "priceHistory", change);
+
+	/* newest change first */
+	history = g_slist_reverse (g_slist_copy (metadata_list_get_values (newItem->metadata, "priceHistory")));
+	g_string_append_printf (text, "<p class=\"priceHistory\"><b>%s</b>", _("Price changes:"));
+	for (GSList *iter = history; iter; iter = g_slist_next (iter)) {
+		g_auto(GStrv) parts = g_strsplit ((const gchar *)iter->data, "\t", 3);
+
+		if (g_strv_length (parts) == 3) {
+			g_autofree gchar *d = g_markup_escape_text (parts[0], -1);
+			g_autofree gchar *o = g_markup_escape_text (parts[1], -1);
+			g_autofree gchar *n = g_markup_escape_text (parts[2], -1);
+			g_string_append_printf (text, "<br/>%s: %s → %s", d, o, n);
+		}
+	}
+	g_string_append (text, "</p>");
+	g_slist_free (history);
+
+	g_free (newItem->description);
+	newItem->description = g_string_free (text, FALSE);
+	newItem->time = now;
+	newItem->validTime = TRUE;
+	oldItem->readStatus = FALSE;
+	debug (DEBUG_CACHE, "-> price of \"%s\" changed from %s to %s", item_get_title (oldItem), oldPrice, newPrice);
+}
+
 static gboolean
-itemset_generic_merge_check (GList *items, itemPtr newItem, gint maxChecks, gboolean allowUpdates, gboolean allowStateChanges)
+itemset_generic_merge_check (GList *items, itemPtr newItem, gint maxChecks, gboolean allowUpdates, gboolean allowStateChanges, gboolean *changed)
 {
 	GList		*oldItemIdIter = items;
 	itemPtr		oldItem = NULL;
-	gboolean	found, equal = FALSE;
+	gboolean	found, equal = FALSE, priceChanged = FALSE;
 	guint		reason = 0;
 
 	/* determine if we should add it... */
@@ -134,6 +178,23 @@ itemset_generic_merge_check (GList *items, itemPtr newItem, gint maxChecks, gboo
 					}
 				}
 
+				/* page feeds: the same item with another price */
+				{
+					const gchar *oldPrice = metadata_list_get (oldItem->metadata, "price");
+					const gchar *newPrice = metadata_list_get (newItem->metadata, "price");
+
+					if (oldPrice && newPrice && !g_str_equal (oldPrice, newPrice)) {
+						equal = FALSE;
+						priceChanged = TRUE;
+						reason |= 32;
+					} else if (!oldPrice && newPrice) {
+						/* price selector added to an existing feed: store
+						   the price quietly, the next change is news */
+						equal = FALSE;
+						reason |= 64;
+					}
+				}
+
 				found = TRUE;
 				break;
 			} else {
@@ -158,6 +219,11 @@ itemset_generic_merge_check (GList *items, itemPtr newItem, gint maxChecks, gboo
 		/* if the item was found but has other contents -> update contents */
 		if (!equal) {
 			if (allowUpdates) {
+				if (priceChanged) {
+					itemset_merge_price_change (oldItem, newItem);
+					*changed = TRUE;
+				}
+
 				/* no item_set_new_status() - we don't treat changed items as new items! */
 				item_set_title (oldItem, item_get_title (newItem));
 
@@ -203,7 +269,7 @@ itemset_generic_merge_check (GList *items, itemPtr newItem, gint maxChecks, gboo
 }
 
 static gboolean
-itemset_merge_item (itemSetPtr itemSet, GList *items, itemPtr item, gint maxChecks, gboolean allowUpdates)
+itemset_merge_item (itemSetPtr itemSet, GList *items, itemPtr item, gint maxChecks, gboolean allowUpdates, gboolean *changed)
 {
 	gboolean	allowStateChanges = FALSE;
 	gboolean	merge;
@@ -217,7 +283,7 @@ itemset_merge_item (itemSetPtr itemSet, GList *items, itemPtr item, gint maxChec
 		allowStateChanges = NODE_SOURCE_TYPE (node)->capabilities & NODE_SOURCE_CAPABILITY_ITEM_STATE_SYNC;
 
 	/* first try to merge with existing item */
-	merge = itemset_generic_merge_check (items, item, maxChecks, allowUpdates, allowStateChanges);
+	merge = itemset_generic_merge_check (items, item, maxChecks, allowUpdates, allowStateChanges, changed);
 
 	/* if it is a new item add it to the item set */
 	if (merge) {
@@ -314,7 +380,7 @@ guint
 itemset_merge_items (itemSetPtr itemSet, GList *list, gboolean allowUpdates, gboolean markAsRead)
 {
 	GList	*iter, *droppedItems = NULL, *items = NULL;
-	guint	i, max, length, toBeDropped, newCount = 0, flagCount = 0;
+	guint	i, max, length, toBeDropped, newCount = 0, changedCount = 0, flagCount = 0;
 	Node	*node;
 
 	debug (DEBUG_UPDATE, "old item set %p of (node id=%s):", itemSet, itemSet->nodeId);
@@ -401,9 +467,13 @@ itemset_merge_items (itemSetPtr itemSet, GList *list, gboolean allowUpdates, gbo
 		if (markAsRead)
 			item->readStatus = TRUE;
 
-		if (itemset_merge_item (itemSet, items, item, length, allowUpdates)) {
+		gboolean changed = FALSE;
+
+		if (itemset_merge_item (itemSet, items, item, length, allowUpdates, &changed)) {
 			newCount++;
 			items = g_list_prepend (items, iter->data);
+		} else if (changed) {
+			changedCount++;
 		}
 		iter = g_list_previous (iter);
 	}
@@ -416,10 +486,10 @@ itemset_merge_items (itemSetPtr itemSet, GList *list, gboolean allowUpdates, gbo
 	   updating in the background kept their old count (no unread number,
 	   no tray alert) until something else recounted them */
 	node = node_from_id (itemSet->nodeId);
-	if (node && (newCount || (NODE_SOURCE_TYPE (node)->capabilities & NODE_SOURCE_CAPABILITY_ITEM_STATE_SYNC)))
+	if (node && (newCount || changedCount || (NODE_SOURCE_TYPE (node)->capabilities & NODE_SOURCE_CAPABILITY_ITEM_STATE_SYNC)))
 		node_update_counters (node);
 
-	debug (DEBUG_UPDATE, "added %d new items", newCount);
+	debug (DEBUG_UPDATE, "added %d new items, %d changed (price)", newCount, changedCount);
 
 	/* 4. Apply cache limit for effective item set size
 	      and unload older items as necessary. In this step
@@ -459,7 +529,8 @@ itemset_merge_items (itemSetPtr itemSet, GList *list, gboolean allowUpdates, gbo
 	g_list_free (items);
 
 
-	return newCount;
+	/* price changes count like new items (alerts, notifications) */
+	return newCount + changedCount;
 }
 
 gboolean

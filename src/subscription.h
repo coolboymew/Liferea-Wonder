@@ -111,6 +111,7 @@ typedef struct subscription {
 	gboolean	loadItemLink;		/*<< if TRUE do automatically load the item link into the HTML pane */
 	trayAlertColor	trayAlert;		/*<< colour the tray icon takes when new items arrive (or TRAY_ALERT_NONE) */
 	gboolean	trayAlertPending;	/*<< TRUE if new items arrived since the user last viewed the feed */	
+	gboolean	kdeConnect;		/*<< TRUE to message paired phones (KDE Connect) about new items */
 } *subscriptionPtr;
 
 /**

@@ -6,7 +6,7 @@ Public License asks, this lists every file added, changed, renamed or
 removed compared to that version. All changes were made in November 2026;
 README.md ("About this fork") describes what they do.
 
-## Added (21)
+## Added (23)
 
 - `CHANGED-FILES.md`
 - `packaging/INSTALL-CachyOS.md`
@@ -20,6 +20,8 @@ README.md ("About this fork") describes what they do.
 - `src/entry_filter.h`
 - `src/install_import.c`
 - `src/install_import.h`
+- `src/kdeconnect.c`
+- `src/kdeconnect.h`
 - `src/parsers/page_scraper.c`
 - `src/parsers/page_scraper.h`
 - `src/tests/page_scraper.c`
@@ -30,7 +32,7 @@ README.md ("About this fork") describes what they do.
 - `src/webkit/page_browser.c`
 - `src/webkit/page_browser.h`
 
-## Changed (60)
+## Changed (62)
 
 - `.github/ISSUE_TEMPLATE/bug_report.md`
 - `.gitignore`
@@ -68,6 +70,7 @@ README.md ("About this fork") describes what they do.
 - `src/itemset.c`
 - `src/liferea_application.c`
 - `src/meson.build`
+- `src/metadata.c`
 - `src/net.c`
 - `src/node_providers/feed.c`
 - `src/node_providers/folder.c`
@@ -84,6 +87,7 @@ README.md ("About this fork") describes what they do.
 - `src/ui/feed_list_view.h`
 - `src/ui/icons.c`
 - `src/ui/icons.h`
+- `src/ui/item_list_view.c`
 - `src/ui/liferea_shell.c`
 - `src/ui/preferences_dialog.c`
 - `src/ui/subscription_dialog.c`
