@@ -61,7 +61,18 @@ Details for each feature are further below, under "Feature details".
 
 ## Installing on CachyOS / Arch Linux
 
-Install the build dependencies (once):
+**Ready-built package (easiest):** on the
+[releases page](https://github.com/coolboymew/Liferea-Wonder/releases/latest),
+download the `liferea-wonder-...-x86_64.pkg.tar.zst` file under *Assets*
+(not the "Source code" archives) and install it with pacman, from the
+folder it was saved in:
+
+    sudo pacman -U liferea-wonder-*-x86_64.pkg.tar.zst
+
+pacman installs the libraries it needs by itself. The release notes have
+the full steps. To build it yourself instead, read on.
+
+**Building from source.** Install the build dependencies (once):
 
     sudo pacman -S --needed base-devel git meson intltool gobject-introspection \
         gtk4 libadwaita webkitgtk-6.0 libpeas-2 json-glib libxml2 libxslt sqlite \
