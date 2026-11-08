@@ -37,10 +37,35 @@
 
 static gboolean importedFiles = FALSE;
 
+/* Inside a Flatpak the user folders are the app's own (~/.var/app/...),
+   regular Liferea's are in the real ones (readable through the Flatpak's
+   permissions); HOST_XDG_* name them when moved */
+static const gchar *
+install_import_host_dir (const gchar *base)
+{
+	static gchar *dirs[3] = { NULL, NULL, NULL };
+	const gchar *own[3] = { g_get_user_config_dir (), g_get_user_data_dir (), g_get_user_cache_dir () };
+	const gchar *env[3] = { "HOST_XDG_CONFIG_HOME", "HOST_XDG_DATA_HOME", "HOST_XDG_CACHE_HOME" };
+	const gchar *rel[3] = { ".config", ".local/share", ".cache" };
+
+	if (!g_file_test ("/.flatpak-info", G_FILE_TEST_EXISTS))
+		return base;
+
+	for (guint i = 0; i < 3; i++) {
+		if (!g_str_equal (base, own[i]))
+			continue;
+		if (!dirs[i])
+			dirs[i] = g_getenv (env[i])?g_strdup (g_getenv (env[i])):g_build_filename (g_get_home_dir (), rel[i], NULL);
+		return dirs[i];
+	}
+
+	return base;
+}
+
 static gchar *
 install_import_source (const gchar *base, const gchar *filename)
 {
-	return g_build_filename (base, UPSTREAM_DIR_NAME, filename, NULL);
+	return g_build_filename (install_import_host_dir (base), UPSTREAM_DIR_NAME, filename, NULL);
 }
 
 static gchar *

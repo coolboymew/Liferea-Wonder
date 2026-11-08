@@ -1,0 +1,93 @@
+{
+    "app-id": "io.github.coolboymew.LifereaWonder",
+    "runtime": "org.gnome.Platform",
+    "runtime-version": "50",
+    "sdk": "org.gnome.Sdk",
+    "command": "liferea-wonder.sh",
+    "cleanup": [
+        "/include",
+        "/lib/pkgconfig",
+        "/share/pkgconfig",
+        "/share/aclocal",
+        "/man",
+        "/share/doc",
+        "/share/gir-1.0",
+        "/share/gtk-doc",
+        "/share/man",
+        "*.la",
+        "*.a"
+    ],
+    "finish-args": [
+        "--device=dri",
+        "--filesystem=xdg-download",
+        "--filesystem=xdg-config/liferea:ro",
+        "--filesystem=xdg-data/liferea:ro",
+        "--filesystem=xdg-cache/liferea:ro",
+        "--share=ipc",
+        "--share=network",
+        "--socket=fallback-x11",
+        "--socket=wayland",
+        "--talk-name=org.freedesktop.secrets",
+        "--talk-name=org.kde.StatusNotifierWatcher",
+        "--talk-name=org.kde.kdeconnect",
+        "--talk-name=org.gnome.Shell.Extensions.GSConnect"
+    ],
+    "modules": [
+        "intltool.json",
+        {
+            "name": "libpeas",
+            "buildsystem": "meson",
+            "config-opts": [
+                "-Dgjs=false",
+                "-Dlua51=false",
+                "-Dintrospection=false",
+                "-Dpython3=true"
+            ],
+            "cleanup": [
+                "/bin/*",
+                "/lib/peas-demo"
+            ],
+            "sources": [
+                {
+                    "type": "archive",
+                    "url": "https://download.gnome.org/sources/libpeas/2.2/libpeas-2.2.1.tar.xz",
+                    "sha256": "589eca89b437006edf3755478df037c740a2a84cfa5d202dbad6095e828e2488"
+                }
+            ]
+        },
+        "python3-requests.json",
+        {
+            "name": "liferea-wonder",
+            "buildsystem": "meson",
+            "post-install": [
+                "install -Dm0755 ${FLATPAK_BUILDER_BUILDDIR}/liferea-wonder.sh ${FLATPAK_DEST}/bin/liferea-wonder.sh",
+                "desktop-file-edit --set-key=Exec --set-value='liferea-wonder.sh %U' ${FLATPAK_DEST}/share/applications/${FLATPAK_ID}.desktop",
+                "sed -i 's|^Exec=.*|Exec=/app/bin/liferea-wonder.sh --gapplication-service|' ${FLATPAK_DEST}/share/dbus-1/services/${FLATPAK_ID}.service"
+            ],
+            "sources": [
+                {
+                    "type": "dir",
+                    "path": "../..",
+                    "skip": [
+                        ".git",
+                        "builddir",
+                        "build-system",
+                        "build-user",
+                        "dist",
+                        "packaging/archlinux/src",
+                        "packaging/archlinux/pkg",
+                        "packaging/flatpak/build",
+                        "packaging/flatpak/repo",
+                        "packaging/flatpak/.flatpak-builder",
+                        "docs/handoff.md"
+                    ]
+                },
+                {
+                    "type": "file",
+                    "path": "liferea-wonder.sh"
+                }
+            ],
+            "run-tests": true
+        }
+    ]
+}

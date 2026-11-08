@@ -1,0 +1,5 @@
+# flatpak-builder output
+/build/
+/repo/
+/.flatpak-builder/
+*.flatpak

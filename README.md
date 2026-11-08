@@ -1,6 +1,6 @@
 # Liferea-Wonder
 
-**AI slopped with Claude. Made mainly for CachyOS, but forked from the real thing. Been tested and in active use, but use at your own risk.**
+**AI slopped with Claude. Made mainly for CachyOS and other Arch-based distros, with a Flatpak for the rest, but forked from the real thing. Been tested and in active use, but use at your own risk.**
 
 Liferea-Wonder is a modified version of the [Liferea](https://github.com/lwindolf/liferea)
 feed reader. Liferea is a desktop feed reader/news aggregator that brings
@@ -34,7 +34,7 @@ similar to a desktop mail/news client, with an embedded web browser.
 **Tray icon** (with the *Tray Icon* plugin)
 
 - **Colour alerts:** give any number of feeds one of six colours (each shown with its tray picture in the colour list). While such a feed has unread items, also older ones, at startup or marked unread by hand, the tray icon takes its colour within a second. With several colours on (and the site check padlock, see below) it shows each for 5 seconds and fades to the next. Preferences can limit colours to newly received entries.
-- **Phone messages (KDE Connect):** per feed, *Send a message to my phone when new items arrive* (feed Properties, *Advanced*) pings every paired phone KDE Connect can reach; feeds updating at the same time share one message.
+- **Phone messages (KDE Connect):** per feed, *Send a message to my phone when new items arrive* (feed Properties, *Advanced*) pings every paired phone KDE Connect can reach; feeds updating at the same time share one message. Without KDE Connect, GNOME's GSConnect is used instead (**included but untested with real GSConnect**).
 - **Close to tray:** closing the window hides it while the tray icon is shown; starting Liferea-Wonder again (e.g. a pinned launcher) brings the same window back.
 - **Clicks:** left click shows the window or brings it to the front, right click opens the menu.
 - **Reliable icon:** uses the application icon, which every icon theme has, and appears even when Liferea-Wonder starts before the panel.
@@ -59,7 +59,16 @@ similar to a desktop mail/news client, with an embedded web browser.
 
 Details for each feature are further below, under "Feature details".
 
-## Installing on CachyOS / Arch Linux
+## Installing
+
+**Arch Linux and Arch-based distros** (CachyOS, EndeavourOS, Garuda,
+Manjaro once its updates catch up), any 64-bit PC: the ready-built
+package below. **Other distros** (Fedora, Ubuntu, Mint, Debian,
+openSUSE...): the Flatpak, further below. Both need a desktop with a tray
+that speaks StatusNotifierItem for the tray icon (KDE Plasma, Cinnamon,
+Xfce, LXQt, Budgie, COSMIC...; GNOME needs the AppIndicator extension).
+
+### Arch Linux and Arch-based distros
 
 **Ready-built package (easiest):** on the
 [releases page](https://github.com/coolboymew/Liferea-Wonder/releases/latest),
@@ -118,6 +127,40 @@ Then start **Liferea-Wonder** from the application menu, or run
 `liferea-wonder`. To show the tray icon, enable the *Tray Icon* plugin in
 *Preferences → Plugins*. `packaging/INSTALL-CachyOS.md` covers installing a
 built package on another computer.
+
+Packages built on CachyOS are tuned for the building computer's
+processor; for packages meant for other computers (like the releases),
+`makepkg --config release-makepkg.conf -f` in `packaging/archlinux` builds
+for any 64-bit PC.
+
+### Other distros: Flatpak
+
+On the [releases page](https://github.com/coolboymew/Liferea-Wonder/releases/latest),
+download `io.github.coolboymew.LifereaWonder.flatpak` and open it with
+your software centre (Discover, GNOME Software), or run, from the folder
+it was saved in:
+
+    flatpak install --user io.github.coolboymew.LifereaWonder.flatpak
+
+It needs Flatpak with the Flathub repository set up (most distros have
+it; otherwise see https://flathub.org/setup), which provides the GNOME
+runtime it runs on. Start it from the application menu or with
+`flatpak run io.github.coolboymew.LifereaWonder`; uninstall with
+`flatpak uninstall io.github.coolboymew.LifereaWonder`.
+
+Flatpak differences: its data lives in
+`~/.var/app/io.github.coolboymew.LifereaWonder/` (`config/`, `data/`,
+`cache/`) instead of `~/.config`, `~/.local/share` and `~/.cache`; to
+switch from the pacman package, quit both and copy the three
+`liferea-wonder` folders there. *Import From Liferea...* reads regular
+Liferea's folders (read-only access). Tray icon, KDE Connect and GSConnect
+messages work as in the package. On NVIDIA graphics the page view runs
+without accelerated drawing, the work-around regular Liferea's Flatpak
+uses for WebKit on NVIDIA.
+
+To build it: `flatpak-builder --user --install --force-clean build
+io.github.coolboymew.LifereaWonder.json` in `packaging/flatpak` (needs
+`flatpak-builder` and `flatpak install --user flathub org.gnome.Sdk//50`).
 
 ## Moving your feeds and data
 
@@ -315,8 +358,12 @@ schema `io.github.coolboymew.LifereaWonder`, and the folders listed above.
   (stored as `kdeConnect`). After an update with new or price-changed
   items, Liferea-Wonder waits 5 seconds for other feeds, then sends one
   ping message ("Liferea-Wonder: new items in Feed (2), Other feed (1)")
-  over D-Bus to every paired, reachable device. Nothing happens without
-  KDE Connect or a reachable phone.
+  over D-Bus to every paired, reachable device. Without KDE Connect
+  running, it goes to GSConnect (GNOME's KDE Connect) instead: a "ping"
+  with the message to its connected, paired devices. **The GSConnect part
+  is included but untested with real GSConnect** (written from its source
+  code and tried against a stand-in only). Nothing happens without either,
+  or without a reachable phone.
 - **Tray icon fixes.** The tray icon uses the application icon (the themed
   "emblem-web" is missing from icon themes like Breeze, the icon then did
   not show at all) and still appears when Liferea starts before the panel's
@@ -325,7 +372,10 @@ schema `io.github.coolboymew.LifereaWonder`, and the folders listed above.
   the running one, *Quit* in the tray menu or Ctrl+Q quits. A left click
   on the icon brings the window up (shown when hidden, raised when behind
   other windows, using the activation token the panel sends on Wayland);
-  the menu opens on a right click.
+  the menu opens on a right click. Where the session bus refuses the
+  usual tray name (inside a Flatpak an app may only own names under its
+  own ID), the icon registers by its object path instead, as AppIndicator
+  apps do; panels accept both.
 - **Fixed article view freezes** (upstream bug): removing a repeated
   title from an article looped forever when the title's text was split
   over several tags (e.g. a forum's label span followed by the rest), the

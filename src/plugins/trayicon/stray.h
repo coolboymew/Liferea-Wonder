@@ -1636,20 +1636,13 @@ stray_create(const char *app_name, const char *icon_name, const char *title) {
         conn, service_name, DBUS_NAME_FLAG_REPLACE_EXISTING, &err
     );
 
-    if (dbus_error_is_set(&err)) {
-        fprintf(
-            stderr, "Error: failed to request DBus name: %s\n", err.message
-        );
-
-        dbus_error_free(&err);
-        dbus_connection_unref(conn);
-        return NULL;
-    }
-
-    if (ret != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) {
-        fprintf(stderr, "Error: failed to become primary owner of DBus name\n");
-        dbus_connection_unref(conn);
-        return NULL;
+    /* Sandboxes (Flatpak) only let an app own names under its own ID.
+       Watchers also take an item registered by its object path, the
+       item is then reached by the connection's unique name (as
+       AppIndicator does) */
+    if (dbus_error_is_set(&err) || ret != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) {
+        if (dbus_error_is_set(&err)) dbus_error_free(&err);
+        snprintf(service_name, sizeof(service_name), "%s", STRAY_OBJECT_PATH);
     }
 
     icon = calloc(1, sizeof(TrayIcon));
@@ -2225,7 +2218,8 @@ void stray_destroy(TrayIcon *icon) {
     }
 
     if (icon->registered) {
-        dbus_bus_release_name(icon->conn, icon->service_name, NULL);
+        if (icon->service_name[0] != '/')
+            dbus_bus_release_name(icon->conn, icon->service_name, NULL);
         dbus_connection_flush(icon->conn);
         process_events_with_timeout(icon->conn, 200);
         icon->registered = 0;

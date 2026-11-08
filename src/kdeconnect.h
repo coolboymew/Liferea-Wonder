@@ -26,8 +26,10 @@
 /* Feeds with "Send a message to my phone" set call this when an update
    brought new (or price changed) items. Feeds updating within a few
    seconds of each other share one message, sent as a KDE Connect ping
-   to every paired and reachable device. Without KDE Connect running or
-   without a reachable device nothing happens. */
+   to every paired and reachable device. Without KDE Connect running,
+   GSConnect (GNOME's KDE Connect) gets it instead, as a "ping" with the
+   message to its connected, paired devices. Without either, or without a
+   reachable device nothing happens. */
 
 /**
  * kdeconnect_notify_new_items: (skip)

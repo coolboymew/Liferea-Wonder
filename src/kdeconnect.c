@@ -34,6 +34,12 @@
 #define KDECONNECT_DAEMON	"org.kde.kdeconnect.daemon"
 #define KDECONNECT_PING		"org.kde.kdeconnect.device.ping"
 
+/* GSConnect, GNOME's KDE Connect: devices are objects of its object
+   manager, "ping" is a device action taking the message text */
+#define GSCONNECT_SERVICE	"org.gnome.Shell.Extensions.GSConnect"
+#define GSCONNECT_PATH		"/org/gnome/Shell/Extensions/GSConnect"
+#define GSCONNECT_DEVICE	"org.gnome.Shell.Extensions.GSConnect.Device"
+
 /* updates of several feeds usually come together: wait this long for
    more before sending one message */
 #define KDECONNECT_COLLECT_SECONDS	5
@@ -53,10 +59,50 @@ kdeconnect_ping_cb (GObject *source, GAsyncResult *res, gpointer user_data)
 	g_autoptr(GVariant)	result = g_dbus_connection_call_finish (G_DBUS_CONNECTION (source), res, &error);
 
 	if (error)
-		debug (DEBUG_UPDATE, "KDE Connect: ping to %s failed: %s", (gchar *)user_data, error->message);
+		debug (DEBUG_UPDATE, "phone message: ping to %s failed: %s", (gchar *)user_data, error->message);
 	else
-		debug (DEBUG_UPDATE, "KDE Connect: pinged %s", (gchar *)user_data);
+		debug (DEBUG_UPDATE, "phone message: pinged %s", (gchar *)user_data);
 	g_free (user_data);
+}
+
+/* GSConnect's devices: the connected, paired ones get the ping */
+static void
+gsconnect_devices_cb (GObject *source, GAsyncResult *res, gpointer user_data)
+{
+	GDBusConnection		*bus = G_DBUS_CONNECTION (source);
+	g_autofree gchar	*message = (gchar *)user_data;
+	g_autoptr(GError)	error = NULL;
+	g_autoptr(GVariant)	result = g_dbus_connection_call_finish (bus, res, &error);
+	g_autoptr(GVariantIter)	objects = NULL;
+	const gchar		*path;
+	GVariant		*interfaces;
+
+	if (!result) {
+		/* neither KDE Connect nor GSConnect running */
+		debug (DEBUG_UPDATE, "GSConnect: no device list: %s", error->message);
+		return;
+	}
+
+	g_variant_get (result, "(a{oa{sa{sv}}})", &objects);
+	while (g_variant_iter_next (objects, "{&o@a{sa{sv}}}", &path, &interfaces)) {
+		g_autoptr(GVariant)	device = g_variant_lookup_value (interfaces, GSCONNECT_DEVICE, G_VARIANT_TYPE ("a{sv}"));
+		gboolean		connected = FALSE, paired = FALSE;
+
+		if (device) {
+			g_variant_lookup (device, "Connected", "b", &connected);
+			g_variant_lookup (device, "Paired", "b", &paired);
+		}
+		if (connected && paired) {
+			GVariantBuilder args;
+
+			g_variant_builder_init (&args, G_VARIANT_TYPE ("av"));
+			g_variant_builder_add (&args, "v", g_variant_new_string (message));
+			g_dbus_connection_call (bus, GSCONNECT_SERVICE, path, "org.gtk.Actions", "Activate",
+			                        g_variant_new ("(sava{sv})", "ping", &args, NULL), NULL,
+			                        G_DBUS_CALL_FLAGS_NO_AUTO_START, 10000, NULL, kdeconnect_ping_cb, g_strdup (path));
+		}
+		g_variant_unref (interfaces);
+	}
 }
 
 static void
@@ -70,8 +116,12 @@ kdeconnect_devices_cb (GObject *source, GAsyncResult *res, gpointer user_data)
 	const gchar		*id;
 
 	if (!result) {
-		/* KDE Connect not installed or not running */
+		/* KDE Connect not installed or not running: GSConnect then */
 		debug (DEBUG_UPDATE, "KDE Connect: no device list: %s", error->message);
+		g_dbus_connection_call (bus, GSCONNECT_SERVICE, GSCONNECT_PATH, "org.freedesktop.DBus.ObjectManager",
+		                        "GetManagedObjects", NULL, G_VARIANT_TYPE ("(a{oa{sa{sv}}})"),
+		                        G_DBUS_CALL_FLAGS_NO_AUTO_START, 10000, NULL, gsconnect_devices_cb,
+		                        g_steal_pointer (&message));
 		return;
 	}
 

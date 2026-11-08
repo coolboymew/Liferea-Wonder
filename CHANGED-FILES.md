@@ -6,12 +6,19 @@ Public License asks, this lists every file added, changed, renamed or
 removed compared to that version. All changes were made in November 2026;
 README.md ("About this fork") describes what they do.
 
-## Added (25)
+## Added (32)
 
 - `CHANGED-FILES.md`
 - `packaging/INSTALL-CachyOS.md`
 - `packaging/archlinux/.gitignore`
 - `packaging/archlinux/PKGBUILD`
+- `packaging/archlinux/release-makepkg.conf`
+- `packaging/flatpak/.gitignore`
+- `packaging/flatpak/intltool-perl5.26-regex-fixes.patch`
+- `packaging/flatpak/intltool.json`
+- `packaging/flatpak/io.github.coolboymew.LifereaWonder.json`
+- `packaging/flatpak/liferea-wonder.sh`
+- `packaging/flatpak/python3-requests.json`
 - `resources/ui/entry_filter_edit.ui`
 - `resources/ui/entry_filters.ui`
 - `resources/ui/folder_properties.ui`
