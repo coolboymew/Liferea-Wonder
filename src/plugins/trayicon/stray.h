@@ -190,6 +190,11 @@ void stray_menu_set_item_enabled(
     TrayMenu *menu, int item_id, dbus_bool_t enabled
 );
 
+/* Shows or hides an item (items start shown). */
+void stray_menu_set_item_visible(
+    TrayMenu *menu, int item_id, dbus_bool_t visible
+);
+
 /* Sets a named icon for a menu item. */
 void stray_menu_set_item_icon(
     TrayMenu *menu, int item_id, const char *icon_name
@@ -215,6 +220,7 @@ struct TrayMenuItem {
 
     dbus_bool_t enabled;
     dbus_bool_t checked;
+    dbus_bool_t hidden;
 
     void *user_data;
 };
@@ -622,7 +628,9 @@ static void emit_layout_updated(TrayIcon *icon, dbus_int32_t parent_id) {
 
 static void
 add_menu_item_properties(DBusMessageIter *props, TrayMenuItem *item) {
-    dbus_bool_t visible;
+    dbus_bool_t visible = !item->hidden;
+
+    add_dict_entry(props, "visible", DBUS_TYPE_BOOLEAN, "b", &visible);
 
     if (item->type == STRAY_MENU_ITEM_SEPARATOR) {
         const char *type_value = "separator";
@@ -634,9 +642,6 @@ add_menu_item_properties(DBusMessageIter *props, TrayMenuItem *item) {
         add_dict_entry(props, "label", DBUS_TYPE_STRING, "s", &item->label);
 
     add_dict_entry(props, "enabled", DBUS_TYPE_BOOLEAN, "b", &item->enabled);
-
-    visible = TRUE;
-    add_dict_entry(props, "visible", DBUS_TYPE_BOOLEAN, "b", &visible);
 
     /* add icon-name if present */
     if (item->icon_name) {
@@ -1551,6 +1556,7 @@ static TrayMenuItem *create_menu_item(
     item->type = type;
     item->enabled = TRUE;
     item->checked = FALSE;
+    item->hidden = FALSE;
     item->callback = callback;
     item->user_data = user_data;
     item->submenu = NULL;
@@ -1818,6 +1824,7 @@ void stray_set_icon(TrayIcon *icon, const char *icon_name) {
     stray_free_icon_pixmap(icon);
     emit_signal(icon, "NewIcon");
     emit_properties_changed(icon, "IconName");
+    emit_properties_changed(icon, "IconPixmap");
 }
 
 void stray_set_title(TrayIcon *icon, const char *title) {
@@ -1901,7 +1908,11 @@ void stray_set_icon_pixmap(
     safe_free(&icon->icon_name);
     icon->icon_name = safe_strdup("");
 
+    /* both changed: panels that keep the properties from these notices
+       (instead of reading them again on NewIcon) went on showing the
+       named icon and never the colours */
     emit_signal(icon, "NewIcon");
+    emit_properties_changed(icon, "IconName");
     emit_properties_changed(icon, "IconPixmap");
 }
 
@@ -2095,6 +2106,29 @@ void stray_menu_set_item_enabled(
     if (item) {
         item->enabled = enabled;
         notify_item_changed(menu, icon, item_id);
+    }
+}
+
+void stray_menu_set_item_visible(
+    TrayMenu *menu, int item_id, dbus_bool_t visible
+) {
+    TrayMenuItem *item;
+    TrayIcon *icon;
+
+    if (!menu) return;
+
+    icon = get_root_icon(menu);
+
+    if (icon) {
+        item = find_menu_item(icon->menu, item_id);
+    } else {
+        item = find_menu_item(menu, item_id);
+    }
+
+    if (item && item->hidden != !visible) {
+        item->hidden = !visible;
+        /* panels rebuild the menu on a layout change */
+        signal_layout_update(menu);
     }
 }
 

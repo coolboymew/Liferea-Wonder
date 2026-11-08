@@ -223,6 +223,26 @@
       <summary>Delay between requests to the same host.</summary>
       <description>Minimum time in seconds (fractions allowed) between two update requests to the same host. Requests to the same host are queued behind each other, different hosts are still fetched in parallel. 0 disables the throttle.</description>
     </key>
+    <key name="site-check-tray" type="b">
+      <default>true</default>
+      <summary>Show waiting site checks in the tray icon.</summary>
+      <description>While a feed waits for a browser site check, the tray icon shows a padlock and its menu lists the feeds to check.</description>
+    </key>
+    <key name="tray-alert-new-only" type="b">
+      <default>false</default>
+      <summary>Tray colours only for newly received entries.</summary>
+      <description>Off: a feed's tray colour is on while it has unread items (also older ones, at startup or marked unread by hand). On: only after an update brought new items, until one of its items is read.</description>
+    </key>
+    <key name="kdeconnect-new-only" type="b">
+      <default>true</default>
+      <summary>KDE Connect messages only for newly received entries.</summary>
+      <description>On: phone messages only when an update brings new items. Off: also when a feed with phone messages has unread items at startup or gets unread items otherwise (e.g. marked unread).</description>
+    </key>
+    <key name="site-check-kdeconnect" type="b">
+      <default>false</default>
+      <summary>Send a KDE Connect message when a site check is needed.</summary>
+      <description>When a feed starts waiting for a browser site check, paired phones get a KDE Connect message naming the feed.</description>
+    </key>
   </schema>
 
   <schema gettext-domain="liferea-wonder" id="io.github.coolboymew.LifereaWonder.plugins" path="/io/github/coolboymew/LifereaWonder/plugins/">

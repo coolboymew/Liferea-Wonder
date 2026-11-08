@@ -6,7 +6,7 @@ Public License asks, this lists every file added, changed, renamed or
 removed compared to that version. All changes were made in November 2026;
 README.md ("About this fork") describes what they do.
 
-## Added (23)
+## Added (25)
 
 - `CHANGED-FILES.md`
 - `packaging/INSTALL-CachyOS.md`
@@ -25,6 +25,8 @@ README.md ("About this fork") describes what they do.
 - `src/parsers/page_scraper.c`
 - `src/parsers/page_scraper.h`
 - `src/tests/page_scraper.c`
+- `src/ui/cookie_editor.c`
+- `src/ui/cookie_editor.h`
 - `src/ui/entry_filter_dialog.c`
 - `src/ui/entry_filter_dialog.h`
 - `src/ui/page_feed_dialog.c`
@@ -32,7 +34,7 @@ README.md ("About this fork") describes what they do.
 - `src/webkit/page_browser.c`
 - `src/webkit/page_browser.h`
 
-## Changed (62)
+## Changed (65)
 
 - `.github/ISSUE_TEMPLATE/bug_report.md`
 - `.gitignore`
@@ -57,6 +59,7 @@ README.md ("About this fork") describes what they do.
 - `resources/ui/properties.ui`
 - `resources/ui/simple_subscription.ui`
 - `src/actions/node_actions.c`
+- `src/actions/node_actions.h`
 - `src/actions/shell_actions.c`
 - `src/common.c`
 - `src/conf.c`
@@ -65,6 +68,7 @@ README.md ("About this fork") describes what they do.
 - `src/db.h`
 - `src/feed_parser.c`
 - `src/feed_parser.h`
+- `src/feedlist.c`
 - `src/html.c`
 - `src/item_state.c`
 - `src/itemset.c`
@@ -72,6 +76,7 @@ README.md ("About this fork") describes what they do.
 - `src/meson.build`
 - `src/metadata.c`
 - `src/net.c`
+- `src/net.h`
 - `src/node_providers/feed.c`
 - `src/node_providers/folder.c`
 - `src/node_providers/folder.h`

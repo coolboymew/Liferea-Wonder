@@ -124,6 +124,7 @@ liferea_sources = files(
   'ui/liferea_dialog.c',
   'ui/liferea_shell.c',
   'ui/page_feed_dialog.c',
+  'ui/cookie_editor.c',
   'ui/preferences_dialog.c',
   'ui/rule_editor.c',
   'ui/search_dialog.c',

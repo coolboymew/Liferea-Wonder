@@ -218,6 +218,58 @@
                             </layout>
                           </object>
                         </child>
+                        <child>
+                          <object class="GtkCheckButton" id="siteCheckTrayCheck">
+                            <property name="label" translatable="yes">Show waiting site checks in the _tray icon</property>
+                            <property name="use-underline">1</property>
+                            <property name="margin-start">12</property>
+                            <property name="tooltip-text" translatable="yes">While a feed waits for a browser site check, the tray icon shows a padlock and its menu lists the feeds to check (needs the Tray Icon plugin).</property>
+                            <layout>
+                              <property name="column">0</property>
+                              <property name="column-span">3</property>
+                              <property name="row">4</property>
+                            </layout>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkCheckButton" id="siteCheckKdeConnectCheck">
+                            <property name="label" translatable="yes">Send a _KDE Connect message when a site check is needed</property>
+                            <property name="use-underline">1</property>
+                            <property name="margin-start">12</property>
+                            <property name="tooltip-text" translatable="yes">Paired phones get a message naming the feed when it starts waiting for a site check.</property>
+                            <layout>
+                              <property name="column">0</property>
+                              <property name="column-span">3</property>
+                              <property name="row">5</property>
+                            </layout>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkCheckButton" id="trayAlertNewOnlyCheck">
+                            <property name="label" translatable="yes">Tray colours only for _newly received entries</property>
+                            <property name="use-underline">1</property>
+                            <property name="margin-start">12</property>
+                            <property name="tooltip-text" translatable="yes">Off: a feed's tray colour is on while it has any unread item (also older ones, at startup or marked unread by hand). On: only after an update brought new items, until one of its items is read.</property>
+                            <layout>
+                              <property name="column">0</property>
+                              <property name="column-span">3</property>
+                              <property name="row">6</property>
+                            </layout>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkCheckButton" id="kdeConnectNewOnlyCheck">
+                            <property name="label" translatable="yes">KDE Connect messages only for newly _received entries</property>
+                            <property name="use-underline">1</property>
+                            <property name="margin-start">12</property>
+                            <property name="tooltip-text" translatable="yes">On: phone messages only when an update brings new items. Off: also for feeds with unread items at startup, or that get unread items otherwise (e.g. marked unread).</property>
+                            <layout>
+                              <property name="column">0</property>
+                              <property name="column-span">3</property>
+                              <property name="row">7</property>
+                            </layout>
+                          </object>
+                        </child>
                         <layout>
                           <property name="column">0</property>
                           <property name="row">1</property>

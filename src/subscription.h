@@ -58,6 +58,19 @@ typedef enum {
 /* names used in feedlist.opml, indexed by trayAlertColor */
 #define TRAY_ALERT_NAMES	{ NULL, "blue", "green", "red", "yellow", "purple", "white" }
 
+/* their colours (GNOME palette, red/green/blue 0..1), indexed by
+   trayAlertColor; "none" is the background under a lone site check
+   padlock in the tray */
+#define TRAY_ALERT_RGB	{ \
+	{ 0.36, 0.38, 0.43 },	/* none */ \
+	{ 0.21, 0.52, 0.89 },	/* blue */ \
+	{ 0.20, 0.82, 0.48 },	/* green */ \
+	{ 0.88, 0.11, 0.14 },	/* red */ \
+	{ 0.96, 0.83, 0.18 },	/* yellow */ \
+	{ 0.57, 0.25, 0.67 },	/* purple */ \
+	{ 0.96, 0.96, 0.96 }	/* white */ \
+}
+
 /** Common structure to hold all information about a single subscription. */
 typedef struct subscription {
 	Node		*node;			/*<< the feed list node the subscription is attached to */

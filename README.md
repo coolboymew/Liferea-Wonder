@@ -17,7 +17,10 @@ similar to a desktop mail/news client, with an embedded web browser.
 - **Per-site request delay:** requests to the same site are spaced out (2 s by default, adjustable in Preferences), so busy sites don't block you.
 - **Folder update schedules:** a folder can have its own update interval for all its feeds; a feed can still override it.
 - **Feeds from web pages:** turn any shop or list page into a feed by saying what an item, its title, link, picture and text are. With automatic detection, a live preview, first-seen dates for items, and kept cookies for sites with a language or age check.
-- **Built-in browser loading for those pages:** pages built by JavaScript work; pass a site check once in a window ("Pass Site Check..."); *Open Page* with *Detect Items Here* and *Pick an Item*; optional scrolling for a number of seconds, for lists that load more as you scroll.
+- **Built-in browser loading for those pages:** pages built by JavaScript work; pass a site check once in a window ("Pass Site Check...", then *Check Passed*: the feed reads the page you see and its padlock goes); *Open Page* with *Detect Items Here* and *Pick an Item*; optional scrolling for a number of seconds, for lists that load more as you scroll.
+- **Pick an Item, then say what's what:** point at one entry (a shop tile, a video), the arrow keys make the outlined block bigger or smaller, a box tells how many like it are on the page. After the click a panel shows what the title, text, price and picture would read; *Choose* and click the right part of the item instead, or *None*. Works with pages made of web components (custom elements, shadow DOM), like many video and shop sites.
+- **Site check alerts:** a padlock frame in the tray icon's colour cycle and *Pass Site Check: feed* entries in the tray menu while feeds wait for a check, and optionally a KDE Connect phone message (both in Preferences, *Feeds*).
+- **Cookie editor:** main menu *Cookies...* or right-click a feed, *Edit Cookies...*: see the cookies sites gave, change a value or keep a cookie until 2099 (e.g. an age check), add or delete cookies.
 - **Prices for web page feeds:** give a *Price* selector (or let *Detect* / *Pick an Item* find it) and the item list shows a price column. When an item's price changes, its entry is updated: new price, a "Price changes" history in its text, the date of the change, and it is unread again (so tray colours and phone messages fire too).
 - **Better feed discovery:** finds feeds that sites only link as ordinary links, then tries common feed addresses.
 - **Name box in New Feed:** filled in automatically and kept after the first update.
@@ -30,7 +33,7 @@ similar to a desktop mail/news client, with an embedded web browser.
 
 **Tray icon** (with the *Tray Icon* plugin)
 
-- **Colour alerts:** give a feed one of six colours; when it has new items the tray icon takes that colour, fading between colours when several are on, until you read one of the feed's items. They come on at once when you choose a colour for a feed with unread items, and survive restarts.
+- **Colour alerts:** give any number of feeds one of six colours (each shown with its tray picture in the colour list). While such a feed has unread items, also older ones, at startup or marked unread by hand, the tray icon takes its colour within a second. With several colours on (and the site check padlock, see below) it shows each for 5 seconds and fades to the next. Preferences can limit colours to newly received entries.
 - **Phone messages (KDE Connect):** per feed, *Send a message to my phone when new items arrive* (feed Properties, *Advanced*) pings every paired phone KDE Connect can reach; feeds updating at the same time share one message.
 - **Close to tray:** closing the window hides it while the tray icon is shown; starting Liferea-Wonder again (e.g. a pinned launcher) brings the same window back.
 - **Clicks:** left click shows the window or brings it to the front, right click opens the menu.
@@ -42,7 +45,7 @@ similar to a desktop mail/news client, with an embedded web browser.
 - **Import from regular Liferea:** feeds, database, icons and settings, with a backup of the previous data.
 - **Own identity:** installs and runs next to regular Liferea without sharing anything.
 - **Safer article view:** feed HTML is cleaned before it is shown, so scripts hidden in feeds cannot run.
-- **Lighter hidden page loads:** no graphics card, 3D, sound or video for pages loaded in the background, and no camera or microphone for any page.
+- **Lighter page loads:** no video in any page of the built-in browser (also stopped video sites crashing it), no graphics card, 3D or sound for pages loaded in the background, and no camera or microphone for any page. A page that crashes anyway is loaded again in its window, and fails its background load at once instead of after a minute.
 - **CachyOS / Arch packaging:** a PKGBUILD and an install guide.
 
 **Fixed upstream bugs**
@@ -51,6 +54,7 @@ similar to a desktop mail/news client, with an embedded web browser.
 - Unread counts and tray alerts did not update for feeds updating in the background.
 - Crash on "Mark all read" with nothing selected; crash when deleting a feed (right-click did not select it).
 - Collapsed panes and a tiny window on first start.
+- A crash when quitting before a window was opened.
 - The preferences plugin, network setup running twice (cookies lost), SameSite cookies, dialogs blocking other windows, the missing window icon.
 
 Details for each feature are further below, under "Feature details".
@@ -216,11 +220,35 @@ schema `io.github.coolboymew.LifereaWonder`, and the folders listed above.
   a moment..."), automatic checks are given a few seconds; if the check needs
   you, the feed gets a padlock icon and the right-click entry *Pass Site
   Check...* opens the page in a window of that session to do it once (or to
-  confirm your age or log in), and the feed updates when you close it. The
+  confirm your age or log in). Once the page shows the site, click *Check
+  Passed*: the feed reads that page as you see it (a new background load
+  could get another check), the padlock goes and the window closes;
+  clicking it while the page still looks like a check asks for a second
+  click. Closing the window without it loads the feed again as before.
+  Check pages are recognised by their title and the check's own page
+  setup; the small Cloudflare script and Turnstile boxes that protected
+  sites put into their normal pages no longer count (they kept the padlock
+  on after the check was passed). Preferences, *Feeds*: *Show waiting site
+  checks in the tray icon* (on by default: a padlock frame in the tray
+  icon's colour cycle, the tooltip names the feeds, the tray menu gets *Pass Site Check:
+  feed* entries for up to five) and *Send a KDE Connect message when a
+  site check is needed* (off by default; one message when a feed starts
+  waiting, stored as `site-check-tray` and `site-check-kdeconnect`). The
   page feed dialog has an *Open Page...* button for the same, whose window
   also offers *Detect Items Here* (detects on the page as you see it, at
   the address you are on) and *Pick an Item* (click one shop tile or list
-  entry and the feed uses all items like it); either one also turns on
+  entry and the feed uses all items like it). While picking, the block
+  under the mouse is outlined and a box at the bottom names it and how many
+  like it the page has; Up/Down arrow pick a bigger or smaller block. The
+  block is a repeated element (class or custom element name like
+  `shop-item-card`) most of whose copies hold a link, so repeated
+  labels or badges inside entries are not mistaken for entries; open
+  shadow roots (web components) are looked into, and pages are read with
+  their shadow content. The page's own click handling is held back while
+  picking. After the click a panel lists Title, Text, Price and Picture
+  with what each reads in the clicked entry: *Choose*, then click that
+  part (a selector most other entries share is preferred), *None* leaves
+  it out, *Use these* hands them to the feed dialog. Either one also turns on
   loading with the built-in browser, since the selectors then fit the page
   as the browser shows it. Only looking at the page and closing the window
   changes nothing about the feed (address, loading), the preview is just
@@ -237,14 +265,25 @@ schema `io.github.coolboymew.LifereaWonder`, and the folders listed above.
   so they shrink and grow with the window.
 - **Coloured tray icon alerts.** With the *Tray Icon* plugin enabled, a feed
   can be given a tray alert colour (blue, green, red, yellow, purple or
-  white) in its properties (*Advanced* tab). Several feeds may share a
-  colour; the dialog names the feeds already using it. When such a feed
-  gets new items the tray icon turns that colour until you read one of the
-  feed's items (or all are read); the tooltip lists the feeds. With several
-  colours on, the icon shows each for 5 seconds and fades to the next.
-  Choosing a colour for a feed that already has unread items turns its
-  alert on at once; an alert not acknowledged yet stays on after a
-  restart (stored as `trayAlertPending`). A quiet alternative to pop-ups for
+  white) in its properties (*Advanced* tab); the list shows each colour's
+  tray picture. Any number of feeds can have colours. When changing between the plain and a coloured icon, the
+  panel is told both the icon name and the picture changed (panels that
+  keep what change notices tell them went on showing the plain icon).
+  Several feeds may share a colour; the dialog names the feeds already
+  using it. While such a feed has unread items the tray icon shows that
+  colour: items that came with an update, older unread ones (at startup
+  too) and items marked unread by hand all count, looked at every second;
+  the tooltip lists the feeds. With several colours on, and the padlock
+  frame while feeds wait for a site check, the icon shows each for 5
+  seconds and fades to the next. Preferences, *Feeds*: *Tray colours only
+  for newly received entries* (`tray-alert-new-only`, off by default)
+  brings back the older behaviour: a colour only after an update brought
+  new items, until one of the feed's items is read (kept over restarts
+  as `trayAlertPending`). *KDE Connect messages only for newly received
+  entries* (`kdeconnect-new-only`, on by default); off, feeds with phone
+  messages also send one when they have unread items at startup or get
+  some without an update (e.g. marked unread), once until they are all
+  read again. A quiet alternative to pop-ups for
   people who keep notifications off. Stored as `trayAlert` on the feed's
   outline in `feedlist.opml`.
 - **Prices in web page feeds.** The page feed dialog has a *Price*
@@ -286,11 +325,21 @@ schema `io.github.coolboymew.LifereaWonder`, and the folders listed above.
   cleaned afterwards, so event handlers in it such as `<img onerror>` ran
   briefly. The whole rendered page now goes through the bundled HTML
   cleaner (DOMPurify) before it is shown.
-- **Lighter hidden page loads.** Page feeds loaded with the built-in
-  browser run without graphics card acceleration, WebGL, sound or video
-  when loading in the background; their visible window keeps WebGL (some
-  site checks use it). Neither ever gets camera or microphone access or
-  plays videos by itself. Pages already run in WebKit's sandbox (a
+- **Cookie editor.** Main menu *Cookies...*, or right-click a feed loaded
+  with the browser or keeping cookies, *Edit Cookies...* (shows that site's
+  cookies). Lists the cookies of the browser loading session and the ones
+  kept for feeds with *Keep cookies*, with value and how long they are
+  kept. Click one to change its site, name, value, path or keep-until date
+  (*Until 2099* for age or language checks, empty: until Liferea-Wonder
+  quits), or delete it; *+* adds one to either store. The site's other
+  cookie settings (secure, same-site) are kept.
+- **Lighter page loads.** Page feeds loaded with the built-in browser run
+  without graphics card acceleration, WebGL or sound when loading in the
+  background; their visible window keeps WebGL and web audio (some site
+  checks use them). No page ever plays video (video sites
+  crashed the page right away on systems without GStreamer's base
+  plugins), gets camera or microphone access. A crashed page is loaded
+  again in its window (twice at most) and fails a background load at once. Pages already run in WebKit's sandbox (a
   separate, locked-down process that cannot read your files).
 - **Fixed unread counts of feeds updating in the background** (upstream
   bug): only the feed shown in the item list got its unread count

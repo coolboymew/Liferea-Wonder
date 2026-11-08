@@ -122,6 +122,10 @@ liferea_shell_get_instance (void)
 void
 liferea_shell_destroy (void)
 {
+	/* quitting before a window was made (e.g. a second start) */
+	if (!shell)
+		return;
+
 	if (shell->toastTimeout) {
 		g_source_remove (shell->toastTimeout);
 		shell->toastTimeout = 0;

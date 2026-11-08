@@ -28,6 +28,7 @@
 #include "feedlist.h"
 #include "itemlist.h"
 #include "json.h"
+#include "kdeconnect.h"
 #include "node.h"
 #include "node_providers/feed.h"
 #include "node_providers/folder.h"
@@ -353,6 +354,8 @@ feedlist_init (FeedList *fl)
 	      related feed drops or initial default feed list import) */
 	feedlist->loading = FALSE;
 	feedlist_schedule_save ();
+
+	kdeconnect_watch_start ();
 }
 
 static void feedlist_unselect(void);

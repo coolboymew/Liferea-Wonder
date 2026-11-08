@@ -30,6 +30,7 @@
 #include "debug.h"
 #include "feedlist.h"
 #include "itemlist.h"
+#include "kdeconnect.h"
 #include "metadata.h"
 #include "node_source.h"
 #include "node_providers/folder.h"
@@ -254,6 +255,13 @@ subscription_process_update_result (UpdateJob *job)
 	debug (DEBUG_UPDATE, "subscription: |%s| process update result (HTTP status %d)", subscription->source, result->httpstatus);
 
 	/* shown with its own icon until the user passed the check */
+	if (result->siteCheckNeeded && !subscription->siteCheckNeeded) {
+		gboolean phone = FALSE;
+
+		conf_get_bool_value (SITE_CHECK_KDECONNECT, &phone);
+		if (phone)
+			kdeconnect_notify_site_check (node_get_title (node));
+	}
 	subscription->siteCheckNeeded = result->siteCheckNeeded;
 
 	/* 1. preprocessing */

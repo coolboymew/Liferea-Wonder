@@ -36,4 +36,23 @@
  */
 void kdeconnect_notify_new_items (const gchar *feedTitle, guint count);
 
+/**
+ * kdeconnect_notify_site_check: (skip)
+ * @feedTitle:	the feed's name
+ *
+ * Sends at once that the feed waits for a browser site check
+ * (Preferences: "Send a KDE Connect message when a site check is needed").
+ */
+void kdeconnect_notify_site_check (const gchar *feedTitle);
+
+/**
+ * kdeconnect_watch_start: (skip)
+ *
+ * Starts looking at the unread counts of feeds with phone messages every
+ * few seconds; with "KDE Connect messages only for newly received
+ * entries" off, a feed that has unread items at startup or gets some
+ * without an update (e.g. marked unread) gets a message too.
+ */
+void kdeconnect_watch_start (void);
+
 #endif

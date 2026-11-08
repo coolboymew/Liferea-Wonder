@@ -23,6 +23,7 @@
 #define _NET_H
 
 #include <glib.h>
+#include <libsoup/soup.h>
 
 #include "update.h"
 
@@ -37,6 +38,13 @@ void network_init (void);
  * Cleanup HTTP client networking support.
  */
 void network_deinit (void);
+
+/**
+ * network_get_kept_cookie_jar: (skip)
+ *
+ * Returns: (transfer none): the cookies kept for feeds with "Keep cookies"
+ */
+SoupCookieJar * network_get_kept_cookie_jar (void);
 
 /**
  * network_get_special_user_agent:

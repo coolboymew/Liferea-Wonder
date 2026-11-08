@@ -308,6 +308,10 @@ preferences_dialog_init (PreferencesDialog *pd)
 
 	/* per-host request throttle in seconds (fractions allowed) */
 	conf_bind (HOST_REQUEST_DELAY, liferea_dialog_lookup (pd->dialog, "hostRequestDelaySpinButton"), "value", G_SETTINGS_BIND_DEFAULT);
+	conf_bind (TRAY_ALERT_NEW_ONLY, liferea_dialog_lookup (pd->dialog, "trayAlertNewOnlyCheck"), "active", G_SETTINGS_BIND_DEFAULT);
+	conf_bind (KDECONNECT_NEW_ONLY, liferea_dialog_lookup (pd->dialog, "kdeConnectNewOnlyCheck"), "active", G_SETTINGS_BIND_DEFAULT);
+	conf_bind (SITE_CHECK_TRAY, liferea_dialog_lookup (pd->dialog, "siteCheckTrayCheck"), "active", G_SETTINGS_BIND_DEFAULT);
+	conf_bind (SITE_CHECK_KDECONNECT, liferea_dialog_lookup (pd->dialog, "siteCheckKdeConnectCheck"), "active", G_SETTINGS_BIND_DEFAULT);
 
 	/* ================== panel 2 "folders" ==================== */
 

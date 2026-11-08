@@ -746,6 +746,8 @@ feed_list_view_popup_menu (Node *node)
 		g_menu_append (section, _("Edit _Web Page Feed..."), "app.node-edit-page-feed");
 	if (validSelection && node->subscription && node->subscription->updateOptions->useBrowser)
 		g_menu_append (section, node->subscription->siteCheckNeeded?_("Pass Site _Check... (needed)"):_("Pass Site _Check..."), "app.node-pass-site-check");
+	if (validSelection && node->subscription && (node->subscription->updateOptions->useBrowser || node->subscription->updateOptions->keepCookies))
+		g_menu_append (section, _("Edit C_ookies..."), "app.node-edit-cookies");
 
 	if (IS_VFOLDER (node)) {
 		g_menu_append_section (menu_model, NULL, G_MENU_MODEL (section));

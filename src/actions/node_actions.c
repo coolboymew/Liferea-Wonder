@@ -35,6 +35,7 @@
 #include "node_providers/vfolder.h"
 #include "node_source.h"
 #include "subscription.h"
+#include "ui/cookie_editor.h"
 #include "ui/entry_filter_dialog.h"
 #include "ui/page_feed_dialog.h"
 #include "webkit/page_browser.h"
@@ -200,14 +201,54 @@ on_site_check_closed (gpointer data, const gchar *uri, const gchar *html)
 		subscription_update (node->subscription, UPDATE_REQUEST_PRIORITY_HIGH);
 }
 
+/* "Check Passed": the feed reads the page as the user sees it now */
+static void
+on_site_check_passed (gpointer data, const gchar *uri, const gchar *html)
+{
+	Node *node = node_is_used_id ((const gchar *)data);
+
+	if (!node || !node->subscription)
+		return;
+
+	debug (DEBUG_UPDATE, "site check passed by hand for %s", node_get_title (node));
+	page_browser_offer_page (subscription_get_source (node->subscription), html);
+	node->subscription->siteCheckNeeded = FALSE;
+	/* a load still waiting for the check would only fail again */
+	subscription_cancel_update (node->subscription);
+	feedlist_node_was_updated (node);
+	subscription_update (node->subscription, UPDATE_REQUEST_PRIORITY_HIGH);
+}
+
+void
+node_pass_site_check (Node *node)
+{
+	if (node && node->subscription)
+		page_browser_open_check_window (subscription_get_source (node->subscription),
+		                                on_site_check_passed, on_site_check_closed,
+		                                g_strdup (node->id), g_free);
+}
+
 static void
 on_pass_site_check (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
-	Node *node = feedlist_get_selected ();
+	node_pass_site_check (feedlist_get_selected ());
+}
+
+/* the cookie editor showing the feed's site ("www.example.com" -> "example.com") */
+static void
+on_edit_cookies (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+	Node			*node = feedlist_get_selected ();
+	g_autoptr(GUri)		uri = NULL;
+	const gchar		*host = NULL;
 
 	if (node && node->subscription)
-		page_browser_open_window (subscription_get_source (node->subscription), NULL, NULL, NULL,
-		                          on_site_check_closed, g_strdup (node->id), g_free);
+		uri = g_uri_parse (subscription_get_source (node->subscription), G_URI_FLAGS_PARSE_RELAXED, NULL);
+	if (uri)
+		host = g_uri_get_host (uri);
+	if (host && g_str_has_prefix (host, "www."))
+		host += 4;
+	cookie_editor_open (host);
 }
 
 static void
@@ -365,6 +406,7 @@ static const GActionEntry gaction_entries[] = {
 	{"node-add-entry-filter", on_add_entry_filter, NULL, NULL, NULL},
 	{"node-edit-page-feed", on_edit_page_feed, NULL, NULL, NULL},
 	{"node-pass-site-check", on_pass_site_check, NULL, NULL, NULL},
+	{"node-edit-cookies", on_edit_cookies, NULL, NULL, NULL},
 	{"node-delete", on_delete, NULL, NULL, NULL},
 	{"node-convert-to-local", ui_popup_add_convert_to_local, NULL, NULL, NULL},
 	{"node-update", on_menu_update, NULL, NULL, NULL},

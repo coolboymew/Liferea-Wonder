@@ -79,6 +79,10 @@
 #define INTRANET_CONNECTIVITY		"intranet-connectivity"
 #define MAX_UPDATE_THREADS              "max-update-threads"
 #define HOST_REQUEST_DELAY		"host-request-delay"
+#define TRAY_ALERT_NEW_ONLY		"tray-alert-new-only"
+#define KDECONNECT_NEW_ONLY		"kdeconnect-new-only"
+#define SITE_CHECK_TRAY			"site-check-tray"
+#define SITE_CHECK_KDECONNECT		"site-check-kdeconnect"
 
 /* initializing methods */
 void	conf_init (void);

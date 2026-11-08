@@ -21,6 +21,8 @@
 #ifndef _PAGE_BROWSER_H
 #define _PAGE_BROWSER_H
 
+#include <webkit/webkit.h>
+
 #include "update_job.h"
 
 /* Page feeds with "load in browser" are loaded by a WebKit view instead
@@ -78,5 +80,37 @@ typedef void (*PageBrowserPickFunc) (gpointer user_data, const gchar *uri, const
 void page_browser_open_window (const gchar *url, const gchar *actionLabel, PageBrowserPageFunc action,
                                PageBrowserPickFunc pick, PageBrowserPageFunc closed,
                                gpointer user_data, GDestroyNotify destroy);
+
+/**
+ * page_browser_open_check_window: (skip)
+ * @url:	the page with the site check
+ * @passed:	called with the page as shown when the user clicks
+ *		"Check Passed" (the window closes then)
+ * @closed: (nullable):	called when the window is closed without that
+ * @user_data:	(transfer full): passed to the callbacks, freed with @destroy
+ * @destroy: (nullable): frees @user_data
+ *
+ * The window for passing a site check by hand.
+ */
+void page_browser_open_check_window (const gchar *url, PageBrowserPageFunc passed, PageBrowserPageFunc closed,
+                                     gpointer user_data, GDestroyNotify destroy);
+
+/**
+ * page_browser_get_cookie_manager: (skip)
+ *
+ * Returns: (transfer none): the cookies of the browser loading session
+ */
+WebKitCookieManager * page_browser_get_cookie_manager (void);
+
+/**
+ * page_browser_offer_page: (skip)
+ * @url:	the page's address (as the feed loads it)
+ * @html:	the page as the user saw it
+ *
+ * The next browser load of @url within a few minutes uses @html instead
+ * of loading the page again (after a site check passed by hand, a new
+ * hidden load may get another check).
+ */
+void page_browser_offer_page (const gchar *url, const gchar *html);
 
 #endif

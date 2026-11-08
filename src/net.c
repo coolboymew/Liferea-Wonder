@@ -595,6 +595,12 @@ network_init (void)
 	g_free (useragent);
 }
 
+SoupCookieJar *
+network_get_kept_cookie_jar (void)
+{
+	return SOUP_COOKIE_JAR (soup_session_get_feature (session3, SOUP_TYPE_COOKIE_JAR));
+}
+
 ProxyDetectMode
 network_get_proxy_detect_mode (void)
 {

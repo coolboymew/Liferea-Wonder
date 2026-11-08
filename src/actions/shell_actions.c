@@ -40,6 +40,7 @@
 #include "node_providers/newsbin.h"
 #include "node_providers/vfolder.h"
 #include "ui/browser_tabs.h"
+#include "ui/cookie_editor.h"
 #include "ui/entry_filter_dialog.h"
 #include "ui/page_feed_dialog.h"
 #include "ui/feed_list_view.h"
@@ -67,6 +68,12 @@ static void
 on_menu_update_all(GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
 	do_menu_update (feedlist_get_root ());
+}
+
+static void
+on_cookies_activate (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+	cookie_editor_open (NULL);
 }
 
 static void
@@ -284,6 +291,7 @@ static const GActionEntry gaction_entries[] = {
 	{"zoom-reset", on_zoomreset_activate, NULL, NULL, NULL},
 	{"show-update-monitor", on_menu_show_update_monitor, NULL, NULL, NULL},
 	{"show-preferences", on_prefbtn_clicked, NULL, NULL, NULL},
+	{"show-cookies", on_cookies_activate, NULL, NULL, NULL},
 	{"show-entry-filters", on_entry_filters_activate, NULL, NULL, NULL},
 	{"new-page-feed", on_new_page_feed_activate, NULL, NULL, NULL},
 	{"search-feeds", on_searchbtn_clicked, NULL, NULL, NULL},

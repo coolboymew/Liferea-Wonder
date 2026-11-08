@@ -24,6 +24,7 @@
 
 #include <gtk/gtk.h>
 
+#include "node.h"
 #include "ui/liferea_shell.h"
 
 /**
@@ -36,5 +37,13 @@
  * Returns: a new action group, to be freed by caller
  */
 GActionGroup * node_actions_create (LifereaShell *shell);
+
+/**
+ * node_pass_site_check: (skip)
+ * @node: a feed waiting for a site check (see page_browser.c)
+ *
+ * Opens the site in a browser window with a "Check Passed" button.
+ */
+void node_pass_site_check (Node *node);
 
 #endif /* NODE_ACTIONS_H */

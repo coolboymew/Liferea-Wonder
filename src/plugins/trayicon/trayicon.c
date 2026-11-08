@@ -29,6 +29,8 @@
 #define STRAY_IMPL 1
 
 #include "stray.h"
+#include "../src/actions/node_actions.h"
+#include "../src/conf.h"
 #include "../src/debug.h"
 #include "../src/feedlist.h"
 #include "../src/liferea_application.h"
@@ -71,6 +73,9 @@ enum {
 	N_PROPS
 };
 
+/* up to this many feeds waiting for a site check get a menu item */
+#define TRAYICON_CHECK_ITEMS	5
+
 typedef struct {
 	GObject parent_instance;
 
@@ -83,33 +88,36 @@ typedef struct {
 
 	/* colour alerts (see trayicon_update_alerts) */
 	gboolean         registered;
-	guint            alertMask;	/* bit (1 << trayAlertColor) per colour that is on */
-	trayAlertColor   shownColor;	/* colour currently shown (TRAY_ALERT_NONE = normal icon) */
-	trayAlertColor   fadeTo;	/* colour being faded to */
+	guint            alertMask;	/* bit (1 << frame) per frame that is on: colours, TRAYICON_LOCK */
+	guint            shownColor;	/* frame currently shown (TRAYICON_PLAIN = normal icon) */
+	guint            fadeTo;	/* frame being faded to */
 	guint            fadeStep;
 	guint            holdId;	/* timer for showing a colour before fading on */
 	guint            fadeId;	/* timer for the crossfade steps */
 	guint            checkId;	/* timer for looking at the feeds after a change */
 	guint            ticks;		/* event timer runs, for the regular look at the feeds */
 	gchar           *tooltip;	/* feeds named in the tooltip */
+
+	/* feeds waiting for a site check (Preferences: show in the tray) */
+	gboolean         lockShown;	/* feeds wait for a site check: the padlock frame is in the cycle */
+	gint             checkSeparator;
+	gint             checkItems[TRAYICON_CHECK_ITEMS];	/* menu items "Pass Site Check: feed" */
+	gchar           *checkNodes[TRAYICON_CHECK_ITEMS];	/* their feeds' ids */
 } TrayiconPlugin;
 
 #define TRAYICON_SIZE		32
 #define TRAYICON_HOLD_SECONDS	5
 #define TRAYICON_FADE_STEPS	20	/* x 50ms = 1s crossfade */
 
+/* Frames of the cycle: the alert colours (trayAlertColor), and in the
+   place of TRAY_ALERT_NONE the site check padlock on a slate square */
+#define TRAYICON_LOCK		TRAY_ALERT_NONE
+#define TRAYICON_PLAIN		TRAY_ALERT_COUNT	/* the normal icon, no frame */
+
 extern FeedList *feedlist;
 
-/* GNOME palette colours, indexed by trayAlertColor */
-static const gdouble alertRGB[TRAY_ALERT_COUNT][3] = {
-	{ 0.0,  0.0,  0.0  },	/* none (unused) */
-	{ 0.21, 0.52, 0.89 },	/* blue */
-	{ 0.20, 0.82, 0.48 },	/* green */
-	{ 0.88, 0.11, 0.14 },	/* red */
-	{ 0.96, 0.83, 0.18 },	/* yellow */
-	{ 0.57, 0.25, 0.67 },	/* purple */
-	{ 0.96, 0.96, 0.96 }	/* white */
-};
+/* indexed by trayAlertColor */
+static const gdouble alertRGB[TRAY_ALERT_COUNT][3] = TRAY_ALERT_RGB;
 
 /* Light backgrounds (yellow, white) get a dark feed symbol */
 static gdouble
@@ -152,7 +160,10 @@ trayicon_remove (TrayiconPlugin *plugin)
 	if (plugin->inTray && plugin->shell)
 		g_object_set (plugin->shell, "close-to-tray", FALSE, NULL);
 	plugin->inTray = FALSE;
+	plugin->lockShown = FALSE;
 	g_clear_pointer (&plugin->tooltip, g_free);
+	for (guint i = 0; i < TRAYICON_CHECK_ITEMS; i++)
+		g_clear_pointer (&plugin->checkNodes[i], g_free);
 
 	if (plugin->timeout_id) {
 		g_source_remove (plugin->timeout_id);
@@ -177,6 +188,7 @@ trayicon_plugin_finalize (GObject *object)
 static void
 trayicon_plugin_init (TrayiconPlugin *plugin)
 {
+	plugin->shownColor = TRAYICON_PLAIN;
 }
 
 static void
@@ -272,7 +284,7 @@ on_close_checkbox_changed (G_GNUC_UNUSED int id, G_GNUC_UNUSED void *userdata)
 /* Draws a rounded square of the given colour with a white feed symbol
    and hands it to the tray as pixmap */
 static void
-trayicon_draw_color (TrayiconPlugin *plugin, gdouble r, gdouble g, gdouble b, gdouble symbol)
+trayicon_draw_color (TrayiconPlugin *plugin, gdouble r, gdouble g, gdouble b, gdouble symbol, gdouble lockAlpha)
 {
 	cairo_surface_t	*surface = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, TRAYICON_SIZE, TRAYICON_SIZE);
 	cairo_t		*cr = cairo_create (surface);
@@ -306,6 +318,37 @@ trayicon_draw_color (TrayiconPlugin *plugin, gdouble r, gdouble g, gdouble b, gd
 	cairo_arc (cr, s * 0.25, s * 0.75, s * 0.52, -G_PI / 2, 0);
 	cairo_stroke (cr);
 
+	/* a feed waits for a site check: yellow padlock in the corner
+	   (fading in and out with its frame) */
+	if (lockAlpha > 0) {
+		const gdouble x = s * 0.52, y = s * 0.50, w = s * 0.46, h = s * 0.48;
+
+		cairo_push_group (cr);
+
+		/* shackle */
+		cairo_set_line_width (cr, s * 0.09);
+		cairo_set_source_rgb (cr, 0.15, 0.15, 0.15);
+		cairo_arc (cr, x + w / 2, y + h * 0.30, w * 0.30, G_PI, 2 * G_PI);
+		cairo_stroke (cr);
+		cairo_set_line_width (cr, s * 0.05);
+		cairo_set_source_rgb (cr, 0.98, 0.80, 0.10);
+		cairo_arc (cr, x + w / 2, y + h * 0.30, w * 0.30, G_PI, 2 * G_PI);
+		cairo_stroke (cr);
+		/* body */
+		cairo_rectangle (cr, x + w * 0.08, y + h * 0.36, w * 0.84, h * 0.60);
+		cairo_set_source_rgb (cr, 0.98, 0.80, 0.10);
+		cairo_fill_preserve (cr);
+		cairo_set_source_rgb (cr, 0.15, 0.15, 0.15);
+		cairo_set_line_width (cr, s * 0.04);
+		cairo_stroke (cr);
+		/* keyhole */
+		cairo_arc (cr, x + w / 2, y + h * 0.60, w * 0.08, 0, 2 * G_PI);
+		cairo_fill (cr);
+
+		cairo_pop_group_to_source (cr);
+		cairo_paint_with_alpha (cr, lockAlpha);
+	}
+
 	cairo_surface_flush (surface);
 	data = cairo_image_surface_get_data (surface);
 	stride = cairo_image_surface_get_stride (surface);
@@ -332,17 +375,31 @@ trayicon_draw_color (TrayiconPlugin *plugin, gdouble r, gdouble g, gdouble b, gd
 	cairo_surface_destroy (surface);
 }
 
-/* Next colour that is on after "from" (in trayAlertColor order) */
-static trayAlertColor
-trayicon_next_color (guint mask, trayAlertColor from)
+/* Next frame that is on after "from", round the cycle */
+static guint
+trayicon_next_color (guint mask, guint from)
 {
-	for (guint i = 1; i < TRAY_ALERT_COUNT; i++) {
-		trayAlertColor c = (trayAlertColor)(((from + i - 1) % (TRAY_ALERT_COUNT - 1)) + 1);
+	for (guint i = 1; i <= TRAY_ALERT_COUNT; i++) {
+		guint c = (from + i) % TRAY_ALERT_COUNT;
 		if (mask & (1u << c))
 			return c;
 	}
 
-	return TRAY_ALERT_NONE;
+	return TRAYICON_PLAIN;
+}
+
+/* frame "from" faded to frame "to" by t (0..1) */
+static void
+trayicon_draw_frames (TrayiconPlugin *plugin, guint from, guint to, gdouble t)
+{
+	const gdouble	*a = alertRGB[from], *b = alertRGB[to];
+
+	trayicon_draw_color (plugin,
+	                     a[0] + (b[0] - a[0]) * t,
+	                     a[1] + (b[1] - a[1]) * t,
+	                     a[2] + (b[2] - a[2]) * t,
+	                     trayicon_symbol_level (a) + (trayicon_symbol_level (b) - trayicon_symbol_level (a)) * t,
+	                     (from == TRAYICON_LOCK?1 - t:0) + (to == TRAYICON_LOCK?t:0));
 }
 
 static gboolean trayicon_hold_cb (gpointer user_data);
@@ -351,14 +408,8 @@ static gboolean
 trayicon_fade_cb (gpointer user_data)
 {
 	TrayiconPlugin	*plugin = (TrayiconPlugin *)user_data;
-	gdouble		t = (gdouble)++plugin->fadeStep / TRAYICON_FADE_STEPS;
-	const gdouble	*from = alertRGB[plugin->shownColor], *to = alertRGB[plugin->fadeTo];
 
-	trayicon_draw_color (plugin,
-	                     from[0] + (to[0] - from[0]) * t,
-	                     from[1] + (to[1] - from[1]) * t,
-	                     from[2] + (to[2] - from[2]) * t,
-	                     trayicon_symbol_level (from) + (trayicon_symbol_level (to) - trayicon_symbol_level (from)) * t);
+	trayicon_draw_frames (plugin, plugin->shownColor, plugin->fadeTo, (gdouble)++plugin->fadeStep / TRAYICON_FADE_STEPS);
 
 	if (plugin->fadeStep < TRAYICON_FADE_STEPS)
 		return G_SOURCE_CONTINUE;
@@ -376,31 +427,93 @@ trayicon_hold_cb (gpointer user_data)
 
 	plugin->holdId = 0;
 	plugin->fadeTo = trayicon_next_color (plugin->alertMask, plugin->shownColor);
-	debug (DEBUG_GUI, "tray alert fading from colour %d to %d", plugin->shownColor, plugin->fadeTo);
+	debug (DEBUG_GUI, "tray alert fading from frame %u to %u", plugin->shownColor, plugin->fadeTo);
 	plugin->fadeStep = 0;
 	plugin->fadeId = g_timeout_add (1000 / TRAYICON_FADE_STEPS, trayicon_fade_cb, plugin);
 
 	return G_SOURCE_REMOVE;
 }
 
+/* A feed's colour is on while it has unread items (also ones it had
+   before, at startup or marked unread by hand); with "only newly
+   received entries" only after an update brought new ones, until one of
+   its items is read */
 static void
-trayicon_collect_alerts (Node *node, guint *mask, GString *names)
+trayicon_collect_alerts (Node *node, gboolean newOnly, guint *mask, GString *names)
 {
 	if (node->subscription &&
 	    node->subscription->trayAlert != TRAY_ALERT_NONE &&
-	    node->subscription->trayAlertPending &&
+	    (!newOnly || node->subscription->trayAlertPending) &&
 	    node->unreadCount > 0) {
 		*mask |= 1u << node->subscription->trayAlert;
 		g_string_append_printf (names, "%s%s", names->len?", ":"", node_get_title (node));
 	}
 
 	for (GSList *iter = node->children; iter; iter = g_slist_next (iter))
-		trayicon_collect_alerts ((Node *)iter->data, mask, names);
+		trayicon_collect_alerts ((Node *)iter->data, newOnly, mask, names);
+}
+
+static void
+trayicon_collect_checks (Node *node, GPtrArray *nodes)
+{
+	if (node->subscription && node->subscription->siteCheckNeeded)
+		g_ptr_array_add (nodes, node);
+
+	for (GSList *iter = node->children; iter; iter = g_slist_next (iter))
+		trayicon_collect_checks ((Node *)iter->data, nodes);
+}
+
+static void
+on_pass_check (int id, gpointer userdata)
+{
+	TrayiconPlugin *plugin = (TrayiconPlugin *)userdata;
+
+	for (guint i = 0; i < TRAYICON_CHECK_ITEMS; i++)
+		if (plugin->checkItems[i] == id && plugin->checkNodes[i])
+			node_pass_site_check (node_is_used_id (plugin->checkNodes[i]));
+}
+
+/* Feeds waiting for a site check: padlock on the icon, one menu item
+   each. Returns TRUE if the padlock changed. */
+static gboolean
+trayicon_update_checks (TrayiconPlugin *plugin)
+{
+	g_autoptr(GPtrArray)	nodes = g_ptr_array_new ();
+	gboolean		show = TRUE, lock;
+	TrayMenu		*menu = plugin->tray->menu;
+
+	conf_get_bool_value (SITE_CHECK_TRAY, &show);
+	if (show)
+		trayicon_collect_checks (feedlist_get_root (), nodes);
+
+	for (guint i = 0; i < TRAYICON_CHECK_ITEMS; i++) {
+		Node *node = (i < nodes->len)?g_ptr_array_index (nodes, i):NULL;
+
+		if (g_strcmp0 (node?node->id:NULL, plugin->checkNodes[i]) == 0)
+			continue;
+		g_free (plugin->checkNodes[i]);
+		plugin->checkNodes[i] = node?g_strdup (node->id):NULL;
+		if (node) {
+			g_autofree gchar *label = g_strdup_printf (_("Pass Site Check: %s"), node_get_title (node));
+			stray_menu_set_item_label (menu, plugin->checkItems[i], label);
+		}
+		stray_menu_set_item_visible (menu, plugin->checkItems[i], node != NULL);
+	}
+	stray_menu_set_item_visible (menu, plugin->checkSeparator, nodes->len > 0);
+
+	lock = nodes->len > 0;
+	if (lock == plugin->lockShown)
+		return FALSE;
+
+	debug (DEBUG_GUI, "tray site check padlock %s (%u feeds)", lock?"on":"off", nodes->len);
+	plugin->lockShown = lock;
+	return TRUE;
 }
 
 /* Feeds can be given an alert colour (feed properties). While such a
-   feed has new unread items the icon takes its colour; with several
-   colours on it shows each for a few seconds and fades to the next. */
+   feed has unread items the icon takes its colour; with several colours
+   (and the site check padlock) on it shows each for 5 seconds and fades
+   to the next. */
 static void
 trayicon_update_alerts (TrayiconPlugin *plugin)
 {
@@ -410,38 +523,56 @@ trayicon_update_alerts (TrayiconPlugin *plugin)
 	if (!plugin->registered || !feedlist_get_root ())
 		return;
 
-	trayicon_collect_alerts (feedlist_get_root (), &mask, names);
+	gboolean newOnly = FALSE;
+
+	trayicon_update_checks (plugin);
+	conf_get_bool_value (TRAY_ALERT_NEW_ONLY, &newOnly);
+	trayicon_collect_alerts (feedlist_get_root (), newOnly, &mask, names);
+	if (plugin->lockShown) {
+		g_autoptr(GPtrArray) nodes = g_ptr_array_new ();
+
+		trayicon_collect_checks (feedlist_get_root (), nodes);
+		g_string_append_printf (names, "%s%s", names->len?"\n":"", _("Site check needed:"));
+		for (guint i = 0; i < nodes->len; i++)
+			g_string_append_printf (names, "%s %s", i?",":"", node_get_title (g_ptr_array_index (nodes, i)));
+	}
 
 	if (!plugin->tooltip || !g_str_equal (plugin->tooltip, names->str)) {
 		g_free (plugin->tooltip);
 		plugin->tooltip = g_strdup (names->str);
-		if (names->len) {
-			g_autofree gchar *text = g_strdup_printf (_("New items in %s"), names->str);
+		if (names->len && mask) {
+			g_autofree gchar *text = g_strdup_printf (_("Unread items in %s"), names->str);
+			stray_set_tooltip (plugin->tray, "Liferea", text);
+		} else if (names->len) {
+			g_autofree gchar *text = g_strdup (names->str);
 			stray_set_tooltip (plugin->tray, "Liferea", text);
 		} else {
 			stray_set_tooltip (plugin->tray, "Liferea", "");
 		}
 	}
 
+	if (plugin->lockShown)
+		mask |= 1u << TRAYICON_LOCK;
+
 	if (mask == plugin->alertMask)
 		return;
 
-	debug (DEBUG_GUI, "tray alert colours changed to 0x%x (%s)", mask, names->str);
+	debug (DEBUG_GUI, "tray alert frames changed to 0x%x (%s)", mask, names->str);
 	plugin->alertMask = mask;
 	trayicon_stop_alert_timers (plugin);
 
 	if (!mask) {
-		plugin->shownColor = TRAY_ALERT_NONE;
+		plugin->shownColor = TRAYICON_PLAIN;
 		stray_set_icon (plugin->tray, plugin->iconName);
 		return;
 	}
 
-	if (!(mask & (1u << plugin->shownColor)))
-		plugin->shownColor = trayicon_next_color (mask, TRAY_ALERT_NONE);
-	trayicon_draw_color (plugin, alertRGB[plugin->shownColor][0], alertRGB[plugin->shownColor][1], alertRGB[plugin->shownColor][2],
-	                     trayicon_symbol_level (alertRGB[plugin->shownColor]));
+	/* stay on the frame shown if it is still on, else the first one */
+	if (plugin->shownColor == TRAYICON_PLAIN || !(mask & (1u << plugin->shownColor)))
+		plugin->shownColor = trayicon_next_color (mask, TRAYICON_PLAIN);
+	trayicon_draw_frames (plugin, plugin->shownColor, plugin->shownColor, 0);
 
-	/* more than one colour on: cycle through them */
+	/* more than one frame on: cycle through them */
 	if (mask & (mask - 1))
 		plugin->holdId = g_timeout_add_seconds (TRAYICON_HOLD_SECONDS, trayicon_hold_cb, plugin);
 }
@@ -476,8 +607,9 @@ TrayEvents(gpointer Data)
 	// the icon when the panel's tray starts after Liferea
 	stray_process_events(plugin->tray);
 
-	/* and every 2s, for counter changes that come without a signal */
-	if (++plugin->ticks % 20 == 0)
+	/* and every second, for counter changes that come without a signal
+	   (e.g. an item marked unread) */
+	if (++plugin->ticks % 10 == 0)
 		trayicon_update_alerts (plugin);
 
 	/* closing the window only hides it while there is an icon to bring it back */
@@ -520,6 +652,14 @@ trayicon_activate (LifereaActivatable *activatable)
 	debug (DEBUG_GUI, "tray icon \"%s\"", plugin->iconName);
 	if (stray_register (plugin->tray) == 0)
 		debug (DEBUG_GUI, "no system tray yet, waiting for one");
+
+	/* hidden until feeds wait for a site check */
+	for (guint i = 0; i < TRAYICON_CHECK_ITEMS; i++) {
+		plugin->checkItems[i] = stray_menu_add_item (menu, _("Pass Site Check"), on_pass_check, plugin);
+		stray_menu_set_item_visible (menu, plugin->checkItems[i], FALSE);
+	}
+	plugin->checkSeparator = stray_menu_add_separator (menu);
+	stray_menu_set_item_visible (menu, plugin->checkSeparator, FALSE);
 
 	stray_menu_add_item (menu, _("Show / Hide"), on_toggle_visibility, plugin);
 	//stray_menu_add_check_item (menu, _("Minimize to tray on close"), on_close_checkbox_changed, plugin);

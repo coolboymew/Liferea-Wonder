@@ -346,6 +346,84 @@ on_feed_prop_update_radio (GtkCheckButton *button, gpointer user_data)
 	gtk_widget_set_sensitive (liferea_dialog_lookup (GTK_WIDGET (user_data), "refreshIntervalUnitComboBox"), limited);
 }
 
+/* The colour's tray icon: rounded square with the feed symbol, as the
+   tray icon shows it ("None": an empty outline) */
+static GdkPaintable *
+tray_alert_icon_new (trayAlertColor color, gint size)
+{
+	static const gdouble	rgb[TRAY_ALERT_COUNT][3] = TRAY_ALERT_RGB;
+	cairo_surface_t		*surface = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, size, size);
+	cairo_t			*cr = cairo_create (surface);
+	const gdouble		s = size, radius = s * 0.2;
+	g_autoptr(GBytes)	bytes = NULL;
+	GdkTexture		*texture;
+
+	cairo_new_sub_path (cr);
+	cairo_arc (cr, s - radius - 1, radius + 1, radius, -G_PI / 2, 0);
+	cairo_arc (cr, s - radius - 1, s - radius - 1, radius, 0, G_PI / 2);
+	cairo_arc (cr, radius + 1, s - radius - 1, radius, G_PI / 2, G_PI);
+	cairo_arc (cr, radius + 1, radius + 1, radius, G_PI, 3 * G_PI / 2);
+	cairo_close_path (cr);
+	if (color != TRAY_ALERT_NONE) {
+		const gdouble	*c = rgb[color];
+		gdouble		symbol = (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] > 0.65)?0.2:1.0;
+
+		cairo_set_source_rgb (cr, c[0], c[1], c[2]);
+		cairo_fill_preserve (cr);
+		cairo_set_source_rgba (cr, 0, 0, 0, 0.35);
+		cairo_set_line_width (cr, 1);
+		cairo_stroke (cr);
+
+		cairo_set_source_rgb (cr, symbol, symbol, symbol);
+		cairo_arc (cr, s * 0.31, s * 0.69, s * 0.08, 0, 2 * G_PI);
+		cairo_fill (cr);
+		cairo_set_line_width (cr, s * 0.1);
+		cairo_set_line_cap (cr, CAIRO_LINE_CAP_ROUND);
+		cairo_arc (cr, s * 0.25, s * 0.75, s * 0.3, -G_PI / 2, 0);
+		cairo_stroke (cr);
+		cairo_arc (cr, s * 0.25, s * 0.75, s * 0.52, -G_PI / 2, 0);
+		cairo_stroke (cr);
+	} else {
+		cairo_set_source_rgba (cr, 0.5, 0.5, 0.5, 0.8);
+		cairo_set_line_width (cr, 1.5);
+		cairo_set_dash (cr, (const gdouble[]){ 2.0, 2.0 }, 2, 0);
+		cairo_stroke (cr);
+	}
+
+	cairo_surface_flush (surface);
+	bytes = g_bytes_new (cairo_image_surface_get_data (surface),
+	                     (gsize)cairo_image_surface_get_stride (surface) * size);
+	texture = gdk_memory_texture_new (size, size, GDK_MEMORY_DEFAULT, bytes,
+	                                  cairo_image_surface_get_stride (surface));
+	cairo_destroy (cr);
+	cairo_surface_destroy (surface);
+
+	return GDK_PAINTABLE (texture);
+}
+
+static void
+on_tray_alert_item_setup (GtkSignalListItemFactory *factory, GtkListItem *item, gpointer user_data)
+{
+	GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 8);
+
+	gtk_box_append (GTK_BOX (box), gtk_image_new ());
+	gtk_box_append (GTK_BOX (box), gtk_label_new (NULL));
+	gtk_list_item_set_child (item, box);
+}
+
+static void
+on_tray_alert_item_bind (GtkSignalListItemFactory *factory, GtkListItem *item, gpointer user_data)
+{
+	GtkWidget		*box = gtk_list_item_get_child (item);
+	GtkWidget		*image = gtk_widget_get_first_child (box);
+	GtkWidget		*label = gtk_widget_get_next_sibling (image);
+	guint			position = gtk_list_item_get_position (item);
+	g_autoptr(GdkPaintable)	icon = tray_alert_icon_new (position < TRAY_ALERT_COUNT?(trayAlertColor)position:TRAY_ALERT_NONE, 16);
+
+	gtk_image_set_from_paintable (GTK_IMAGE (image), icon);
+	gtk_label_set_text (GTK_LABEL (label), gtk_string_object_get_string (GTK_STRING_OBJECT (gtk_list_item_get_item (item))));
+}
+
 /* Collects the titles of other feeds using the given tray alert colour */
 static void
 subscription_dialog_collect_alert_users (Node *node, Node *self, trayAlertColor color, GSList **names)
@@ -546,8 +624,13 @@ subscription_prop_dialog_load (GtkWidget *dialog,
 		g_autoptr(GtkStringList) list = gtk_string_list_new (NULL);
 		GtkDropDown *dropdown = GTK_DROP_DOWN (liferea_dialog_lookup (dialog, "trayAlertDropDown"));
 
+		g_autoptr(GtkListItemFactory) factory = gtk_signal_list_item_factory_new ();
+
 		for (guint i = 0; colors[i]; i++)
 			gtk_string_list_append (list, _(colors[i]));
+		g_signal_connect (factory, "setup", G_CALLBACK (on_tray_alert_item_setup), NULL);
+		g_signal_connect (factory, "bind", G_CALLBACK (on_tray_alert_item_bind), NULL);
+		gtk_drop_down_set_factory (dropdown, factory);
 		gtk_drop_down_set_model (dropdown, G_LIST_MODEL (list));
 		gtk_drop_down_set_selected (dropdown, subscription->trayAlert);
 		g_signal_connect (dropdown, "notify::selected", G_CALLBACK (on_tray_alert_changed), dialog);
